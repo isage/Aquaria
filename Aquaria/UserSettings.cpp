@@ -280,20 +280,18 @@ static void readInt(XMLElement *xml, const char *elem, const char *att, int *toC
 	}
 }
 
-void UserSettings::loadDefaults(bool doApply)
+bool UserSettings::loadDefaults(bool doApply)
 {
 	std::ostringstream os;
 	os << "default-" << VERSION_USERSETTINGS << ".xml";
 	if (exists(os.str()))
 	{
-		load(doApply, os.str());
-		return;
+		return load(doApply, os.str());
 	}
 
 	if (exists("default_usersettings.xml"))
 	{
-		load(doApply, "default_usersettings.xml");
-		return;
+		return load(doApply, "default_usersettings.xml");
 	}
 
 	errorLog("No default user settings file found! Controls may be broken.");
@@ -303,20 +301,30 @@ void UserSettings::load(bool doApply, const std::string &overrideFile)
 {
 	std::string filename;
 
+
+    if (!overrideFile.empty())
+        filename = overrideFile;
+    else
+    {
 #if defined(BBGE_BUILD_UNIX)
-	filename = dsq->getPreferencesFolder() + "/" + userSettingsFilename;
-#elif defined(BBGE_BUILD_WINDOWS)
-	if (!overrideFile.empty())
-		filename = overrideFile;
-	else
-		filename = userSettingsFilename;
+        filename = dsq->getPreferencesFolder() + "/" + userSettingsFilename;
+#else
+        filename = userSettingsFilename;
 #endif
+    }
+
+	if (exists("default_usersettings.xml"))
+	{
+	    return false;
+	}
+
 
 	XMLDocument doc;
 	if(readXML(filename, doc) != XML_SUCCESS)
 	{
 		errorLog("UserSettings: Malformed XML, continuing with defaults");
 		doc.Clear(); // just in case
+		return false;
 	}
 
 	version.settingsVersion = 0;
