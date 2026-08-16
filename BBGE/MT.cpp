@@ -12,17 +12,17 @@ Lockable::Lockable()
 
 Lockable::~Lockable()
 {
-	SDL_DestroyMutex((SDL_mutex*)_mtx);
+	SDL_DestroyMutex((SDL_Mutex*)_mtx);
 }
 
 void Lockable::lock()
 {
-	SDL_LockMutex((SDL_mutex*)_mtx);
+	SDL_LockMutex((SDL_Mutex*)_mtx);
 }
 
 void Lockable::unlock()
 {
-	SDL_UnlockMutex((SDL_mutex*)_mtx);
+	SDL_UnlockMutex((SDL_Mutex*)_mtx);
 }
 
 // --------- Waitable ----------
@@ -30,26 +30,26 @@ void Lockable::unlock()
 Waitable::Waitable()
 : _cond(NULL)
 {
-	_cond = SDL_CreateCond();
+	_cond = SDL_CreateCondition();
 }
 
 Waitable::~Waitable()
 {
-	SDL_DestroyCond((SDL_cond*)_cond);
+	SDL_DestroyCondition((SDL_Condition*)_cond);
 }
 
 void Waitable::wait()
 {
-	SDL_CondWait((SDL_cond*)_cond, (SDL_mutex*)mutex());
+	SDL_WaitCondition((SDL_Condition*)_cond, (SDL_Mutex*)mutex());
 }
 
 void Waitable::signal()
 {
-	SDL_CondSignal((SDL_cond*)_cond);
+	SDL_SignalCondition((SDL_Condition*)_cond);
 }
 
 void Waitable::broadcast()
 {
-	SDL_CondBroadcast((SDL_cond*)_cond);
+	SDL_BroadcastCondition((SDL_Condition*)_cond);
 }
 

@@ -44,7 +44,6 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include <direct.h>
 #endif
 
-#include "SDL_syswm.h"
 static SDL_Window *gScreen=0;
 static SDL_GLContext gGLctx=0;
 
@@ -668,7 +667,8 @@ void Core::setInputGrab(bool on)
 {
 	if (isWindowFocus())
 	{
-		SDL_SetWindowGrab(gScreen, on ? SDL_TRUE : SDL_FALSE);
+		SDL_SetWindowMouseGrab(gScreen, on ? true : false);
+		SDL_SetWindowKeyboardGrab(gScreen, on ? true : false);
 	}
 }
 
@@ -755,9 +755,9 @@ bool Core::getMouseButtonState(int m)
 	case 2: mcode=2; break;
 	}
 
-	Uint8 mousestate = SDL_GetMouseState(0,0);
+	Uint8 mousestate = SDL_GetMouseState(NULL,NULL);
 
-	return mousestate & SDL_BUTTON(mcode);
+	return mousestate & SDL_BUTTON_MASK(mcode);
 }
 
 bool Core::getKeyState(int k)
@@ -790,7 +790,7 @@ void readKeyData()
 bool Core::initJoystickLibrary(int numSticks)
 {
 	//joystickEnabled = false;
-	SDL_InitSubSystem(SDL_INIT_JOYSTICK | SDL_INIT_HAPTIC | SDL_INIT_GAMECONTROLLER);
+	SDL_InitSubSystem(SDL_INIT_JOYSTICK | SDL_INIT_HAPTIC | SDL_INIT_GAMEPAD);
 
 	if (numSticks > 0)
 		joystick.init(0);
@@ -977,7 +977,7 @@ unsigned int Core::dbg_numRenderCalls = 0;
 
 static bool lookup_glsym(const char *funcname, void **func)
 {
-	*func = SDL_GL_GetProcAddress(funcname);
+	*func = (void*)SDL_GL_GetProcAddress(funcname);
 	if (*func == NULL)
 	{
 		std::ostringstream os;
@@ -1051,10 +1051,10 @@ bool Core::initGraphicsLibrary(int width, int height, bool fullscreen, int vsync
 	//if (!didOnce)
 	{
 		Uint32 flags = 0;
-		flags = SDL_WINDOW_OPENGL | SDL_WINDOW_SHOWN;
+		flags = SDL_WINDOW_OPENGL;
 		if (fullscreen)
 			flags |= SDL_WINDOW_FULLSCREEN;
-		gScreen = SDL_CreateWindow(appName.c_str(), SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, width, height, flags);
+		gScreen = SDL_CreateWindow(appName.c_str(), width, height, flags);
 		if (gScreen == NULL)
 		{
 			std::ostringstream os;
@@ -1094,7 +1094,8 @@ bool Core::initGraphicsLibrary(int width, int height, bool fullscreen, int vsync
 	if ((_vsync != 1) || (SDL_GL_SetSwapInterval(-1) == -1))
 		SDL_GL_SetSwapInterval(_vsync);
 	const char *name = SDL_GetCurrentVideoDriver();
-	SDL_SetWindowGrab(gScreen, SDL_TRUE);
+	SDL_SetWindowMouseGrab(gScreen, true);
+	SDL_SetWindowKeyboardGrab(gScreen, true);
 
 	glViewport(0, 0, width, height);
 	glScissor(0, 0, width, height);
@@ -1103,7 +1104,7 @@ bool Core::initGraphicsLibrary(int width, int height, bool fullscreen, int vsync
 	os2 << "Video Driver Name [" << name << "]";
 	debugLog(os2.str());
 
-	SDL_ShowCursor(SDL_DISABLE);
+	SDL_HideCursor();
 	SDL_PumpEvents();
 
 	for (int i = 0; i < KEY_MAXARRAY; i++)
@@ -1145,21 +1146,22 @@ bool Core::initGraphicsLibrary(int width, int height, bool fullscreen, int vsync
 void Core::enumerateScreenModes()
 {
 	screenModes.clear();
-
-	SDL_DisplayMode mode;
-	const int modecount = SDL_GetNumDisplayModes(0);
-	if(modecount == 0){
-		debugLog("No modes available!");
-		return;
-	}
-	
-	for (int i = 0; i < modecount; i++) {
-		SDL_GetDisplayMode(0, i, &mode);
-		if (mode.w && mode.h && (mode.w > mode.h))
-		{
-			screenModes.push_back(ScreenMode(i, mode.w, mode.h, mode.refresh_rate));
-		}
-	}
+    SDL_DisplayID primaryDisplay = SDL_GetPrimaryDisplay();
+    int modecount = 0;
+    SDL_DisplayMode** modes = SDL_GetFullscreenDisplayModes(primaryDisplay, &modecount);
+    if (!modes || modecount == 0) {
+        debugLog("No modes available!");
+        if (modes) SDL_free(modes);
+        return;
+    }
+    for (int i = 0; i < modecount; i++) {
+        const SDL_DisplayMode* mode = modes[i];
+        if (mode->w && mode->h && (mode->w > mode->h))
+        {
+            screenModes.push_back(ScreenMode(i, mode->w, mode->h, mode->refresh_rate));
+        }
+    }
+    SDL_free(modes);
 }
 
 void Core::shutdownSoundLibrary()
@@ -1170,9 +1172,10 @@ void Core::shutdownGraphicsLibrary(bool killVideo)
 {
 	glFinish();
 	if (killVideo) {
-		SDL_SetWindowGrab(gScreen, SDL_FALSE);
+		SDL_SetWindowMouseGrab(gScreen, false);
+		SDL_SetWindowKeyboardGrab(gScreen, false);
 		SDL_GL_MakeCurrent(gScreen, NULL);
-		SDL_GL_DeleteContext(gGLctx);
+		SDL_GL_DestroyContext(gGLctx);
 		SDL_DestroyWindow(gScreen);
 		gGLctx = 0;
 		SDL_QuitSubSystem(SDL_INIT_VIDEO);
@@ -1767,7 +1770,7 @@ void Core::main(float runTime)
 
 					resetTimer();
 					
-					SDL_ShowCursor(SDL_DISABLE);
+					SDL_HideCursor();
 
 					continue;
 				}
@@ -2101,12 +2104,12 @@ static sdlKeyMap *initSDLKeymap(void)
 	SETKEYMAP(KEY_NUMPADSTAR, SDLK_KP_MULTIPLY);
 	SETKEYMAP(KEY_PGDN, SDLK_PAGEDOWN);
 	SETKEYMAP(KEY_PGUP, SDLK_PAGEUP);
-	SETKEYMAP(KEY_APOSTROPHE, SDLK_QUOTE);
+	SETKEYMAP(KEY_APOSTROPHE, SDLK_APOSTROPHE);
 	SETKEYMAP(KEY_EQUALS, SDLK_EQUALS);
 	SETKEYMAP(KEY_SEMICOLON, SDLK_SEMICOLON);
 	SETKEYMAP(KEY_LBRACKET, SDLK_LEFTBRACKET);
 	SETKEYMAP(KEY_RBRACKET, SDLK_RIGHTBRACKET);
-	SETKEYMAP(KEY_TILDE, SDLK_BACKQUOTE);
+	SETKEYMAP(KEY_TILDE, SDLK_GRAVE);
 	SETKEYMAP(KEY_0, SDLK_0);
 	SETKEYMAP(KEY_1, SDLK_1);
 	SETKEYMAP(KEY_2, SDLK_2);
@@ -2117,32 +2120,32 @@ static sdlKeyMap *initSDLKeymap(void)
 	SETKEYMAP(KEY_7, SDLK_7);
 	SETKEYMAP(KEY_8, SDLK_8);
 	SETKEYMAP(KEY_9, SDLK_9);
-	SETKEYMAP(KEY_A, SDLK_a);
-	SETKEYMAP(KEY_B, SDLK_b);
-	SETKEYMAP(KEY_C, SDLK_c);
-	SETKEYMAP(KEY_D, SDLK_d);
-	SETKEYMAP(KEY_E, SDLK_e);
-	SETKEYMAP(KEY_F, SDLK_f);
-	SETKEYMAP(KEY_G, SDLK_g);
-	SETKEYMAP(KEY_H, SDLK_h);
-	SETKEYMAP(KEY_I, SDLK_i);
-	SETKEYMAP(KEY_J, SDLK_j);
-	SETKEYMAP(KEY_K, SDLK_k);
-	SETKEYMAP(KEY_L, SDLK_l);
-	SETKEYMAP(KEY_M, SDLK_m);
-	SETKEYMAP(KEY_N, SDLK_n);
-	SETKEYMAP(KEY_O, SDLK_o);
-	SETKEYMAP(KEY_P, SDLK_p);
-	SETKEYMAP(KEY_Q, SDLK_q);
-	SETKEYMAP(KEY_R, SDLK_r);
-	SETKEYMAP(KEY_S, SDLK_s);
-	SETKEYMAP(KEY_T, SDLK_t);
-	SETKEYMAP(KEY_U, SDLK_u);
-	SETKEYMAP(KEY_V, SDLK_v);
-	SETKEYMAP(KEY_W, SDLK_w);
-	SETKEYMAP(KEY_X, SDLK_x);
-	SETKEYMAP(KEY_Y, SDLK_y);
-	SETKEYMAP(KEY_Z, SDLK_z);
+	SETKEYMAP(KEY_A, SDLK_A);
+	SETKEYMAP(KEY_B, SDLK_B);
+	SETKEYMAP(KEY_C, SDLK_C);
+	SETKEYMAP(KEY_D, SDLK_D);
+	SETKEYMAP(KEY_E, SDLK_E);
+	SETKEYMAP(KEY_F, SDLK_F);
+	SETKEYMAP(KEY_G, SDLK_G);
+	SETKEYMAP(KEY_H, SDLK_H);
+	SETKEYMAP(KEY_I, SDLK_I);
+	SETKEYMAP(KEY_J, SDLK_J);
+	SETKEYMAP(KEY_K, SDLK_K);
+	SETKEYMAP(KEY_L, SDLK_L);
+	SETKEYMAP(KEY_M, SDLK_M);
+	SETKEYMAP(KEY_N, SDLK_N);
+	SETKEYMAP(KEY_O, SDLK_O);
+	SETKEYMAP(KEY_P, SDLK_P);
+	SETKEYMAP(KEY_Q, SDLK_Q);
+	SETKEYMAP(KEY_R, SDLK_R);
+	SETKEYMAP(KEY_S, SDLK_S);
+	SETKEYMAP(KEY_T, SDLK_T);
+	SETKEYMAP(KEY_U, SDLK_U);
+	SETKEYMAP(KEY_V, SDLK_V);
+	SETKEYMAP(KEY_W, SDLK_W);
+	SETKEYMAP(KEY_X, SDLK_X);
+	SETKEYMAP(KEY_Y, SDLK_Y);
+	SETKEYMAP(KEY_Z, SDLK_Z);
 
 	SETKEYMAP(KEY_LEFT, SDLK_LEFT);
 	SETKEYMAP(KEY_RIGHT, SDLK_RIGHT);
@@ -2211,14 +2214,14 @@ void Core::pollEvents()
 
 	if (updateMouse)
 	{
-		int x, y;
+		float x, y;
 		Uint8 mousestate = SDL_GetMouseState(&x,&y);
 
 		if (mouse.buttonsEnabled)
 		{
-			mouse.buttons.left		= mousestate & SDL_BUTTON(1)?DOWN:UP;
-			mouse.buttons.right		= mousestate & SDL_BUTTON(3)?DOWN:UP;
-			mouse.buttons.middle	= mousestate & SDL_BUTTON(2)?DOWN:UP;
+			mouse.buttons.left		= mousestate & SDL_BUTTON_MASK(SDL_BUTTON_LEFT)?DOWN:UP;
+			mouse.buttons.right		= mousestate & SDL_BUTTON_MASK(SDL_BUTTON_RIGHT)?DOWN:UP;
+			mouse.buttons.middle	= mousestate & SDL_BUTTON_MASK(SDL_BUTTON_MIDDLE)?DOWN:UP;
 
 			mouse.pure_buttons = mouse.buttons;
 
@@ -2246,19 +2249,19 @@ void Core::pollEvents()
 
 	while ( SDL_PollEvent (&event) ) {
 		switch (event.type) {
-			case SDL_KEYDOWN:
+			case SDL_EVENT_KEY_DOWN:
 			{
 				#if __APPLE__
-				if ((event.key.keysym.sym == SDLK_q) && (event.key.keysym.mod & KMOD_GUI))
+				if ((event.key.key == SDLK_Q) && (event.key.mod & SDL_KMOD_GUI))
 				#else
-				if ((event.key.keysym.sym == SDLK_F4) && (event.key.keysym.mod & KMOD_ALT))
+				if ((event.key.key == SDLK_F4) && (event.key.mod & SDL_KMOD_ALT))
 				#endif
 				{
 					quitNestedMain();
 					quit();
 				}
 
-				if ((event.key.keysym.sym == SDLK_g) && (event.key.keysym.mod & KMOD_CTRL))
+				if ((event.key.key == SDLK_G) && (event.key.mod & SDL_KMOD_CTRL))
 				{
 					// toggle mouse grab with the magic hotkey.
 					grabInputOnReentry = (grabInputOnReentry)?0:-1;
@@ -2266,21 +2269,21 @@ void Core::pollEvents()
 				}
 				else if (_hasFocus)
 				{
-					keys[mapSDLKeyToGameKey(event.key.keysym.sym)] = 1;
+					keys[mapSDLKeyToGameKey(event.key.key)] = 1;
 				}
 			}
 			break;
 
-			case SDL_KEYUP:
+			case SDL_EVENT_KEY_UP:
 			{
 				if (_hasFocus)
 				{
-					keys[mapSDLKeyToGameKey(event.key.keysym.sym)] = 0;
+					keys[mapSDLKeyToGameKey(event.key.key)] = 0;
 				}
 			}
 			break;
 
-			case SDL_MOUSEMOTION:
+			case SDL_EVENT_MOUSE_MOTION:
 			{
 				if (_hasFocus && updateMouse)
 				{
@@ -2296,19 +2299,16 @@ void Core::pollEvents()
 			}
 			break;
 
-			case SDL_WINDOWEVENT:
+			case SDL_EVENT_WINDOW_DESTROYED:
 			{
-				if (event.window.event == SDL_WINDOWEVENT_CLOSE)
-				{
 					SDL_Quit();
 					_exit(0);
 					//loopDone = true;
 					//quit();
-				}
 			}
 			break;
 
-			case SDL_MOUSEWHEEL:
+			case SDL_EVENT_MOUSE_WHEEL:
 			{
 				if (_hasFocus && updateMouse)
 				{
@@ -2319,32 +2319,12 @@ void Core::pollEvents()
 				}
 			}
 			break;
-			case SDL_QUIT:
+			case SDL_EVENT_QUIT:
 				SDL_Quit();
 				_exit(0);
 				//loopDone = true;
 				//quit();
 			break;
-
-			case SDL_SYSWMEVENT:
-			{
-				/*
-				debugLog("SYSWM!");
-				if (event.syswm.type == WM_ACTIVATE)
-				{
-					debugLog("ACTIVE");
-					this->unloadDevice();
-					this->reloadDevice();
-				}
-				else
-				{
-					debugLog("NOT ACTIVE");
-					this->unloadDevice();
-				}
-				*/
-			}
-			break;
-
 			default:
 			break;
 		}
@@ -2944,7 +2924,7 @@ void Core::shutdown()
 void Core::instantQuit()
 {
     SDL_Event event;
-    event.type = SDL_QUIT;
+    event.type = SDL_EVENT_QUIT;
     SDL_PushEvent(&event);
 }
 

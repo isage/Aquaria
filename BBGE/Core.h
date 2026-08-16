@@ -284,7 +284,7 @@ public:
 	Vector rightStick;
 	bool inited, xinited;
 	bool anyButton();
-	SDL_GameController *sdl_controller;
+	SDL_Gamepad *sdl_controller;
 	SDL_Haptic *sdl_haptic;
 	SDL_Joystick *sdl_joy;
 	int stickIndex;

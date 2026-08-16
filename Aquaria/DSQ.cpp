@@ -279,7 +279,7 @@ void DSQ::forceInputGrabOff()
 {
 	toggleInputGrabPlat(false);
 	setInpGrab = 0;
-	SDL_ShowCursor(SDL_DISABLE);
+	SDL_HideCursor();
 }
 
 void DSQ::rumble(float leftMotor, float rightMotor, float time)
@@ -851,13 +851,25 @@ void DSQ::setVersionLabelText()
 
 static bool sdlVideoModeOK(const int w, const int h, const int bpp)
 {
-	SDL_DisplayMode mode;
-	const int modecount = SDL_GetNumDisplayModes(0);
-	for (int i = 0; i < modecount; i++) {
-		SDL_GetDisplayMode(0, i, &mode);
-        if (!mode.w || !mode.h || (w >= mode.w && h >= mode.h)) {
-			return true;
+	SDL_DisplayID display_id = SDL_GetPrimaryDisplay();
+    if (display_id == 0) {
+        return false;
+    }
+	int modecount = 0;
+	SDL_DisplayMode **modes = SDL_GetFullscreenDisplayModes(display_id, &modecount);
+    bool found_valid_mode = false;
+    if (modes) {
+        for (int i = 0; i < modecount; i++) {
+            const SDL_DisplayMode *mode = modes[i];
+            if (!mode->w || !mode->h || (w >= mode->w && h >= mode->h)) {
+                found_valid_mode = true;
+                break;
+            }
         }
+        SDL_free(modes);
+    }
+    if (found_valid_mode) {
+        return true;
     }
     return false;
 }
@@ -4144,8 +4156,8 @@ void DSQ::bindInput()
 void DSQ::jiggleCursor()
 {
 	// hacky
-	SDL_ShowCursor(SDL_ENABLE);
-	SDL_ShowCursor(SDL_DISABLE);
+	SDL_ShowCursor();
+	SDL_HideCursor();
 }
 
 float skipSfxVol = 1.0;

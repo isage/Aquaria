@@ -7,7 +7,7 @@
 #include <map>
 #include <set>
 #include <cassert>
-#include "SDL.h"
+#include <SDL3/SDL.h>
 
 using namespace minihttp;
 
