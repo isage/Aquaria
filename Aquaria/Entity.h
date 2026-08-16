@@ -457,7 +457,6 @@ public:
 	//bool registerEntityDied;
 	bool clampToSurface(int tcheck=0, Vector usePos=Vector(0,0), TileVector hitTile=TileVector(0,0));
 	bool checkSurface(int tcheck, int state, float statet);
-	//static Shader blurShader;
 	std::string naijaReaction;
 	Vector lookAtPoint;
 	Vector getLookAtPoint();
@@ -528,8 +527,6 @@ protected:
 	int lance;
 	Bone *lanceBone;
 	void updateLance(float dt);
-	//InterpolatedVector blurShaderAnim;
-
 
 	int fhScale, fvScale;
 	void onFHScale();

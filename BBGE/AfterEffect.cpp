@@ -34,7 +34,6 @@ AfterEffectManager::AfterEffectManager(int xDivs, int yDivs)
 	active = false;
 	numEffects = 0;
 	bRenderGridPoints = true;
-	shaderPipeline.resize(10, 0);
 
 	screenWidth = core->getWindowWidth();
 	screenHeight = core->getWindowHeight();
@@ -57,16 +56,8 @@ AfterEffectManager::AfterEffectManager(int xDivs, int yDivs)
 			drawGrid[i] = new Vector [yDivs];
 		}
 	}
-
-	loadShaders();
 }
 
-void AfterEffectManager::loadShaders()
-{
-	deleteShaders();
-
-	// ...Load shaders here...
-}
 
 AfterEffectManager::~AfterEffectManager()
 {
@@ -80,7 +71,6 @@ AfterEffectManager::~AfterEffectManager()
 		delete[] drawGrid;
 	}
 	deleteEffects();
-	deleteShaders();
 }
 
 void AfterEffectManager::deleteEffects()
@@ -96,28 +86,6 @@ void AfterEffectManager::deleteEffects()
 	numEffects=0;
 	while (!openSpots.empty())
 		openSpots.pop();
-}
-
-void AfterEffectManager::deleteShaders()
-{
-	for(size_t i = 0; i < shaderPipeline.size(); ++i)
-		shaderPipeline[i] = 0;
-
-	for(size_t i = 0; i < loadedShaders.size(); ++i)
-	{
-		if(loadedShaders[i])
-		{
-			delete loadedShaders[i];
-			loadedShaders[i] = 0;
-		}
-	}
-}
-
-void AfterEffectManager::unloadShaders()
-{
-	for(size_t i = 0; i < loadedShaders.size(); ++i)
-		if(loadedShaders[i])
-			loadedShaders[i]->unload();
 }
 
 void AfterEffectManager::clear()
@@ -177,7 +145,6 @@ void AfterEffectManager::render()
 {
 	assert(core->frameBuffer.isInited());
 
-#ifdef BBGE_BUILD_OPENGL
 	glPushMatrix();
 
 	glDisable (GL_ALPHA_TEST);
@@ -191,29 +158,10 @@ void AfterEffectManager::render()
 	renderGrid();
 	//renderGridPoints();
 	glPopMatrix();
-#endif
 }
 
 void AfterEffectManager::renderGrid()
 {
-#ifdef BBGE_BUILD_OPENGL
-
-	int firstShader = -1;
-	int lastShader = -1;
-	Shader *activeShader = 0;
-	for (size_t i = 0; i < shaderPipeline.size(); ++i)
-	{
-		if(shaderPipeline[i] && shaderPipeline[i]->isLoaded())
-		{
-			if(firstShader < 0)
-			{
-				firstShader = i;
-				activeShader = shaderPipeline[i];
-			}
-			lastShader = i;
-		}
-	}
-
 	screenWidth = core->getWindowWidth();
 	screenHeight = core->getWindowHeight();
 
@@ -227,15 +175,6 @@ void AfterEffectManager::renderGrid()
 	int offy = -core->getVirtualOffY();
 
 	core->frameBuffer.bindTexture();
-
-	if(activeShader)
-	{
-		activeShader->bind();
-		activeShader->setInt("tex", 0);
-
-		if(firstShader != lastShader)
-			backupBuffer.startCapture();
-	}
 
 	//float div = xDivs;
 	for (int i = 0; i < (xDivs-1); i++)
@@ -264,55 +203,8 @@ void AfterEffectManager::renderGrid()
 		}
 	}
 
-	if (activeShader)
-		activeShader->unbind();
-
 	float width2 = float(vw)/2;
 	float height2 = float(vh)/2;
-
-
-	if(firstShader != lastShader)
-	{
-		// From here on: secondary shader passes.
-		// We just outputted to the backup buffer...
-		FrameBuffer *fbIn = &core->frameBuffer;
-		FrameBuffer *fbOut = &backupBuffer;
-
-
-		for(int i = firstShader + 1; i <= lastShader; ++i)
-		{
-			activeShader = shaderPipeline[i];
-			if(!(activeShader && activeShader->isLoaded()))
-				continue;
-
-			// Swap and exchange framebuffers. The old output buffer serves as texture input for the other one
-			fbOut->endCapture();
-			std::swap(fbIn, fbOut);
-			fbIn->bindTexture();
-
-			// If this is the last pass, do not render to a frame buffer again
-			if(i != lastShader)
-				fbOut->startCapture();
-
-			activeShader->bind();
-			activeShader->setInt("tex", 0);
-			
-			// note that offx, offy are negative here!
-			glBegin(GL_QUADS);
-				glTexCoord2d(0.0f, 0.0f);
-				glVertex3f(offx, vh+offy,  0.0f);
-				glTexCoord2d(percentX, 0.0f);
-				glVertex3f( vw+offx, vh+offy,  0.0f);
-				glTexCoord2d(percentX, percentY);
-				glVertex3f( vw+offx,  offy,  0.0f);
-				glTexCoord2d(0.0f, percentY);
-				glVertex3f(offx,  offy,  0.0f);
-			glEnd();
-			
-			activeShader->unbind();
-		}
-	}
-
 
 	// uncomment to render grid points
 	/*
@@ -350,17 +242,14 @@ void AfterEffectManager::renderGrid()
 	RenderObject::lastTextureApplied = 0;
 	glBindTexture(GL_TEXTURE_2D, 0);
 
-	//bwShader.unbind();
 	//glActiveTextureARB(GL_TEXTURE0_ARB);
 	//glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_MODULATE);	
 	//if (bRenderGridPoints)
 	//	renderGridPoints();
-#endif
 }
 
 void AfterEffectManager::renderGridPoints()
 {
-#ifdef BBGE_BUILD_OPENGL
 	glColor4f(0.0f,0.0f,0.0f,1.0f);
 	for (int i = 0; i < (xDivs); i++)
 	{
@@ -374,13 +263,11 @@ void AfterEffectManager::renderGridPoints()
 		glEnd();
 		}
 	}
-#endif
 }
 
 void AfterEffectManager::unloadDevice()
 {
 	backupBuffer.unloadDevice();
-	unloadShaders();
 }
 
 void AfterEffectManager::reloadDevice()
@@ -405,23 +292,6 @@ void AfterEffectManager::reloadDevice()
 		backupBuffer.reloadDevice();
 	else
 		backupBuffer.init(-1, -1, true);
-
-	for (size_t i = 0; i < loadedShaders.size(); ++i)
-	{
-		if (Shader *sh = loadedShaders[i])
-		{
-			sh->reload();
-			if (!sh->isLoaded())
-			{
-				debugLog("AfterEffect::reloadDevice(): Failed to reload shader");
-				delete sh;
-				loadedShaders[i] = 0;
-				for(size_t j = 0; j < shaderPipeline.size(); ++j)
-					if(sh == shaderPipeline[j])
-						shaderPipeline[j] = 0;
-			}
-		}
-	}
 }
 
 void AfterEffectManager::addEffect(Effect *e)
@@ -573,79 +443,3 @@ void RippleEffect::update(float dt, Vector ** drawGrid, int xDivs, int yDivs)
 		}
 	}
 }
-
-int AfterEffectManager::loadShaderFile(const char *vert, const char *frag)
-{
-	Shader *sh = new Shader();
-	sh->load(vert, frag);
-	if(!sh->isLoaded())
-	{
-		delete sh;
-		return 0;
-	}
-	return _insertShader(sh);
-}
-
-int AfterEffectManager::loadShaderSrc(const char *vert, const char *frag)
-{
-	Shader *sh = new Shader();
-	sh->loadSrc(vert, frag);
-	if(!sh->isLoaded())
-	{
-		delete sh;
-		return 0;
-	}
-	return _insertShader(sh);
-}
-
-Shader *AfterEffectManager::getShaderPtr(int handle)
-{
-	size_t idx = handle - 1;
-	return idx  < loadedShaders.size() ? loadedShaders[idx] : 0;
-}
-
-void AfterEffectManager::setShaderPipelineSize(size_t size)
-{
-	shaderPipeline.resize(size, 0);
-}
-
-bool AfterEffectManager::setShaderPipelinePos(int handle, size_t pos)
-{
-	if(pos < shaderPipeline.size())
-	{
-		shaderPipeline[pos] = getShaderPtr(handle);
-		return true;
-	}
-	return false;
-}
-
-// returns handle (= index + 1)
-int AfterEffectManager::_insertShader(Shader *sh)
-{
-	for(size_t i = 0; i < loadedShaders.size(); ++i)
-	{
-		if(!loadedShaders[i])
-		{
-			loadedShaders[i] = sh;
-			return i+1;
-		}
-	}
-	loadedShaders.push_back(sh);
-	return loadedShaders.size();
-}
-
-void AfterEffectManager::deleteShader(int handle)
-{
-	Shader *sh = getShaderPtr(handle);
-	if(!sh)
-		return;
-
-	for(size_t i = 0; i < shaderPipeline.size(); ++i)
-		if(shaderPipeline[i] == sh)
-			shaderPipeline[i] = 0;
-
-	size_t idx = handle - 1;
-	loadedShaders[idx] = 0;
-	delete sh;
-}
-

@@ -41,9 +41,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "Network.h"
 
 
-#ifdef BBGE_BUILD_OPENGL
-	#include <sys/stat.h>
-#endif
+#include <sys/stat.h>
 
 #ifdef BBGE_BUILD_VFS
 #include "ttvfs.h"
@@ -281,9 +279,7 @@ void DSQ::forceInputGrabOff()
 {
 	toggleInputGrabPlat(false);
 	setInpGrab = 0;
-#ifdef BBGE_BUILD_SDL
 	SDL_ShowCursor(SDL_DISABLE);
-#endif
 }
 
 void DSQ::rumble(float leftMotor, float rightMotor, float time)
@@ -576,10 +572,6 @@ void DSQ::debugMenu()
 					dsq->continuity.loadEatBank();
 
 					dsq->game->loadEntityTypeList();
-					if (core->afterEffectManager)
-					{
-						core->afterEffectManager->loadShaders();
-					}
 					dsq->user.load();
 					dsq->continuity.loadIngredientData();
 				}
@@ -857,10 +849,8 @@ void DSQ::setVersionLabelText()
 	versionLabel->setText(os.str());
 }
 
-#ifdef BBGE_BUILD_SDL
 static bool sdlVideoModeOK(const int w, const int h, const int bpp)
 {
-#ifdef BBGE_BUILD_SDL2
 	SDL_DisplayMode mode;
 	const int modecount = SDL_GetNumDisplayModes(0);
 	for (int i = 0; i < modecount; i++) {
@@ -870,11 +860,7 @@ static bool sdlVideoModeOK(const int w, const int h, const int bpp)
         }
     }
     return false;
-#else
-	return SDL_VideoModeOK(w, h, bpp, SDL_OPENGL | SDL_FULLSCREEN);
-#endif
 }
-#endif
 
 void DSQ::init()
 {
@@ -1035,7 +1021,6 @@ This build is not yet final, and as such there are a couple things lacking. They
 	debugLog("OK");
 	*/
 
-#ifdef BBGE_BUILD_SDL
 	SDL_Init(SDL_INIT_VIDEO);
 	if (fullscreen && !sdlVideoModeOK(user.video.resx, user.video.resy, user.video.bits))
 	{
@@ -1045,7 +1030,6 @@ This build is not yet final, and as such there are a couple things lacking. They
 		if (!sdlVideoModeOK(user.video.resx, user.video.resy, user.video.bits))
 			fullscreen = false;  // last chance.
 	}
-#endif
 
 	debugLog("Init Graphics Library...");
 		initGraphicsLibrary(user.video.resx, user.video.resy, fullscreen, user.video.vsync, user.video.bits);
@@ -1511,11 +1495,6 @@ This build is not yet final, and as such there are a couple things lacking. They
 	renderObjectLayerOrder[LR_ENTITIES_MINUS4] = -1;
 	renderObjectLayerOrder[LR_ENTITIES_MINUS3] = -1;
 	renderObjectLayerOrder[LR_ENTITIES_MINUS2] = -1;
-
-	/*if (!Entity::blurShader.isLoaded())
-	{
-		//Entity::blurShader.load("data/shaders/stan.vert", "data/shaders/hoblur.frag");
-	}*/
 
 	setMousePosition(core->center);
 	
@@ -4158,19 +4137,15 @@ void DSQ::bindInput()
 		addAction(MakeFunctionEvent(DSQ, toggleRenderCollisionShapes), KEY_RETURN, 0);
 	}
 	addAction(MakeFunctionEvent(DSQ, debugMenu), KEY_BACKSPACE, 0);
-#if BBGE_BUILD_SDL
 	addAction(MakeFunctionEvent(DSQ, takeScreenshot		),		KEY_PRINTSCREEN,	0);
-#endif
 	addAction(MakeFunctionEvent(DSQ, takeScreenshotKey	),		KEY_P,				0);
 }
 
 void DSQ::jiggleCursor()
 {
-#ifdef BBGE_BUILD_SDL
 	// hacky
 	SDL_ShowCursor(SDL_ENABLE);
 	SDL_ShowCursor(SDL_DISABLE);
-#endif
 }
 
 float skipSfxVol = 1.0;
@@ -4209,9 +4184,7 @@ void DSQ::onUpdate(float dt)
 			{
 				pollEvents();
 				ActionMapper::onUpdate(sec);
-#ifdef BBGE_BUILD_SDL
 				SDL_Delay(int(sec*1000));
-#endif
 				render();
 				showBuffer();
 				resetTimer();
@@ -4965,11 +4938,8 @@ void AquariaScreenTransition::capture()
 	width = core->getWindowWidth();
 	height = core->getWindowHeight();
 
-#ifdef BBGE_BUILD_OPENGL
 	glBindTexture(GL_TEXTURE_2D,screen_texture);
 	glCopyTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, 0, 0, width, height);
-#endif
-
 
 	dsq->cursor->alpha = oldAlpha;
 	core->render();

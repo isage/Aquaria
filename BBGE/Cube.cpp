@@ -22,16 +22,4 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 void Cube::onRender()
 {
-#if 0  // not used at the moment, and incompatible with OpenGL ES.  --ryan.
-#ifdef BBGE_BUILD_OPENGL
-	glBegin(GL_QUADS);
-	{
-		//auxSolidCube(1);
-		//auxSolidTorus(1,2);
-		//auxSolidIcosahedron(1);
-		//auxSolidSphere(1);
-	}
-	glEnd();
-#endif
-#endif
 }

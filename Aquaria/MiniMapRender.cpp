@@ -420,8 +420,6 @@ void MiniMapRender::onUpdate(float dt)
 
 void MiniMapRender::onRender()
 {
-#ifdef BBGE_BUILD_OPENGL
-
 	glBindTexture(GL_TEXTURE_2D, 0);
 	RenderObject::lastTextureApplied = 0;
 	const float alphaValue = alpha.x;
@@ -785,7 +783,5 @@ void MiniMapRender::onRender()
 	glColor4f(1,1,1,1);
 
 	glBindTexture(GL_TEXTURE_2D, 0);
-
-#endif
 }
 

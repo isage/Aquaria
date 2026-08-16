@@ -586,16 +586,6 @@ BaseText *getText(lua_State *L, int slot = 1)
 	return q;
 }
 
-static inline
-Shader *getShader(lua_State *L, int slot = 1)
-{
-	Shader *q = (Shader*)lua_touserdata(L, slot);
-	ENSURE_TYPE(q, SCO_SHADER);
-	if (!q)
-		scriptDebug(L, "Invalid Shader");
-	return q;
-}
-
 static SkeletalSprite *getSkeletalSprite(Entity *e)
 {
 	return e ? &e->skeletalSprite : NULL;
@@ -917,7 +907,6 @@ MakeTypeCheckFunc(isWeb, SCO_WEB)
 MakeTypeCheckFunc(isIng, SCO_INGREDIENT)
 MakeTypeCheckFunc(isBeam, SCO_BEAM)
 MakeTypeCheckFunc(isText, SCO_TEXT)
-MakeTypeCheckFunc(isShader, SCO_SHADER)
 MakeTypeCheckFunc(isParticleEffect, SCO_PARTICLE_EFFECT)
 
 #undef MakeTypeCheckFunc
@@ -9262,81 +9251,6 @@ luaFunc(text_getActualWidth)
 	luaReturnNum(txt ? txt->getActualWidth() : 0.0f);
 }
 
-luaFunc(loadShader)
-{
-	int handle = 0;
-	const char *vertRaw = getCString(L, 1);
-	const char *fragRaw = getCString(L, 2);
-	std::string vert, frag;
-	if(vertRaw)
-		findFile_helper(vertRaw, vert);
-	if(fragRaw)
-		findFile_helper(fragRaw, frag);
-
-	if(core->afterEffectManager)
-		handle = core->afterEffectManager->loadShaderFile(vert.c_str(), frag.c_str());
-
-	luaReturnInt(handle);
-}
-
-luaFunc(createShader)
-{
-	int handle = 0;
-	if(core->afterEffectManager)
-		handle = core->afterEffectManager->loadShaderSrc(getCString(L, 1), getCString(L, 2));
-	luaReturnInt(handle);
-}
-
-luaFunc(shader_setAsAfterEffect)
-{
-	int handle = lua_tointeger(L, 1);
-	int pos = lua_tointeger(L, 2);
-	bool done = false;
-
-	if(core->afterEffectManager)
-		done = core->afterEffectManager->setShaderPipelinePos(handle, pos);
-
-	luaReturnBool(done);
-}
-
-luaFunc(shader_setNumAfterEffects)
-{
-	if(core->afterEffectManager)
-		core->afterEffectManager->setShaderPipelineSize(lua_tointeger(L, 1));
-	luaReturnNil();
-}
-
-luaFunc(shader_setInt)
-{
-	if(core->afterEffectManager)
-	{
-		Shader *sh = core->afterEffectManager->getShaderPtr(lua_tointeger(L, 1));
-		const char *name = getCString(L, 2);
-		if(sh && name)
-			sh->setInt(name, lua_tointeger(L, 3), lua_tointeger(L, 4), lua_tointeger(L, 5), lua_tointeger(L, 6));
-	}
-	luaReturnNil();
-}
-
-luaFunc(shader_setFloat)
-{
-	if(core->afterEffectManager)
-	{
-		Shader *sh = core->afterEffectManager->getShaderPtr(lua_tointeger(L, 1));
-		const char *name = getCString(L, 2);
-		if(sh && name)
-			sh->setFloat(name, lua_tonumber(L, 3), lua_tonumber(L, 4), lua_tonumber(L, 5), lua_tonumber(L, 6));
-	}
-	luaReturnNil();
-}
-
-luaFunc(shader_delete)
-{
-	if(core->afterEffectManager)
-		core->afterEffectManager->deleteShader(lua_tointeger(L, 1));
-	luaReturnNil();
-}
-
 luaFunc(pe_start)
 {
 	ParticleEffect *pe = getParticle(L);
@@ -9361,20 +9275,12 @@ luaFunc(pe_isRunning)
 
 luaFunc(getPerformanceCounter)
 {
-#ifdef BBGE_BUILD_SDL2
 	luaReturnNum((lua_Number)SDL_GetPerformanceCounter());
-#else
-	luaReturnNum((lua_Number)SDL_GetTicks());
-#endif
 }
 
 luaFunc(getPerformanceFreq)
 {
-#ifdef BBGE_BUILD_SDL2
 	luaReturnNum((lua_Number)SDL_GetPerformanceFrequency());
-#else
-	luaReturnNum((lua_Number)1000);
-#endif
 }
 
 //--------------------------------------------------------------------------------------------
@@ -10374,14 +10280,6 @@ static const struct {
 	luaRegister(text_getLineHeight),
 	luaRegister(text_getNumLines),
 
-	luaRegister(loadShader),
-	luaRegister(createShader),
-	luaRegister(shader_setAsAfterEffect),
-	luaRegister(shader_setNumAfterEffects),
-	luaRegister(shader_setFloat),
-	luaRegister(shader_setInt),
-	luaRegister(shader_delete),
-
 	luaRegister(pe_start),
 	luaRegister(pe_stop),
 	luaRegister(pe_isRunning),
@@ -10397,7 +10295,6 @@ static const struct {
 	luaRegister(isIng),
 	luaRegister(isBeam),
 	luaRegister(isText),
-	luaRegister(isShader),
 	luaRegister(isParticleEffect),
 
 	luaRegister(getPerformanceCounter),

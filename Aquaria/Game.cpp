@@ -1949,7 +1949,6 @@ void Game::clearObsRows()
 
 void Game::fillGridFromQuad(Quad *q, ObsType obsType, bool trim)
 {
-#ifdef BBGE_BUILD_OPENGL
 	if (q->texture)
 	{
 		std::vector<TileVector> obs;
@@ -2079,7 +2078,6 @@ void Game::fillGridFromQuad(Quad *q, ObsType obsType, bool trim)
 		}
 		glPopMatrix();
 	}
-#endif
 }
 
 std::string Game::getNoteName(int n, const std::string &pre)
@@ -2777,7 +2775,6 @@ void Game::setTimerText(float time)
 
 void Game::generateCollisionMask(Quad *q, float overrideCollideRadius /* = 0 */)
 {
-#ifdef BBGE_BUILD_OPENGL
 	if (q->texture)
 	{
 		q->collidePosition = Vector(0,0,0);
@@ -2882,7 +2879,6 @@ void Game::generateCollisionMask(Quad *q, float overrideCollideRadius /* = 0 */)
 			rot += 360;
 		*/
 	}
-#endif
 }
 
 void Game::addPath(Path *p)
@@ -8767,38 +8763,6 @@ void Game::onOptionsSave()
 		}
 	}
 
-	/*
-	if (dsq->user.video.ripples != dsq->user_backup.video.ripples)
-	{
-		if (dsq->user.video.ripples)
-		{
-			if (core->frameBuffer.isInited())
-			{
-				if (!core->afterEffectManager)
-				{
-					core->afterEffectManager = new AfterEffectManager(vars->afterEffectsXDivs, vars->afterEffectsYDivs);
-					core->afterEffectManager->update(0.0);
-					core->afterEffectManager->capture();
-				}
-
-				dsq->useFrameBuffer = 1;
-			}
-			else
-			{
-				dsq->useFrameBuffer = 0;
-			}
-		}
-		else
-		{
-			if (core->afterEffectManager)
-			{
-				delete core->afterEffectManager;
-				core->afterEffectManager = 0;
-			}
-		}
-	}
-	*/
-
 	if (!keyConfigMenu)
 		dsq->user.save();
 
@@ -10098,17 +10062,6 @@ void Game::update(float dt)
 
 	if (avatar)
 	{
-		/*tintColor.update(dt);
-		if (core->afterEffectManager)
-		{
-			if (tintColor.isInterpolating())
-				core->afterEffectManager->setActiveShader(AS_GLOW);
-			else
-				core->afterEffectManager->setActiveShader(AS_NONE);
-
-			core->afterEffectManager->glowShader.setValue(tintColor.x, tintColor.y, tintColor.z, 1);
-		}*/
-
 		if (avatar->isRolling())
 			particleManager->addInfluence(ParticleInfluence(avatar->position, 300, 800, true));
 		else if (avatar->isCharging())

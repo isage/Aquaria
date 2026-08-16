@@ -28,8 +28,6 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "Shot.h"
 #include "PathFinding.h"
 
-//Shader Entity::blurShader;
-
 void Entity::stopPull()
 {
 	if (dsq->game->avatar->pullTarget == this)
@@ -1097,7 +1095,6 @@ void Entity::onFHScale()
 	copySkel.alpha.interpolateTo(0, 0.5);
 	*/
 	//skeletalSprite.alpha.interpolateTo(1,sct);
-	//blurShaderAnim.interpolateTo(Vector(blurMin,0,0), sct);
 	fhScale = 0;
 }
 
@@ -1121,9 +1118,6 @@ void Entity::onFH()
 		//flipScale.interpolateTo(Vector(1.5, 1), sct);
 
 		flipScale.interpolateTo(Vector(0.6, 1), sct);
-
-		//blurShaderAnim = Vector(blurMin);
-		//blurShaderAnim.interpolateTo(Vector(blurMax,0,0), sct/2);
 
 		fhScale = 1;
 	}
@@ -1699,8 +1693,6 @@ void Entity::onUpdate(float dt)
 				onFHScale();
 		break;
 		}
-
-		//blurShaderAnim.update(dt);
 	}
 
 
@@ -2847,18 +2839,7 @@ void Entity::render()
 
 	// HACK: need to multiply base + etc
 	skeletalSprite.setColorMult(this->color, this->alpha.x);
-	/*bool set=false;
-	if (beautyFlip && blurShader.isLoaded() && flipScale.isInterpolating() && dsq->user.video.blur)
-	{
-		//swizzle
-		blurShader.setValue(color.x, color.y, color.z, blurShaderAnim.x);
-		blurShader.bind();
-		set = true;
-	}*/
 	Quad::render();
-	//if (beautyFlip && blurShader.isLoaded() && flipScale.isInterpolating())
-	//if (set)
-	//	blurShader.unbind();
 	renderBorder = false;
 	skeletalSprite.clearColorMult();
 	color = bcolor;

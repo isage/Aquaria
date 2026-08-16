@@ -76,7 +76,6 @@ void PostProcessingFX::render()
 	{
 		if (enabled[i])
 		{
-#ifdef BBGE_BUILD_OPENGL
 			glPushMatrix();
 			FXTypes type = (FXTypes)i;
 			switch(type)
@@ -152,8 +151,6 @@ void PostProcessingFX::render()
 			break;
 			}
 			glPopMatrix();
-
-#endif
 		}
 	}
 }

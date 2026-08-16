@@ -90,10 +90,6 @@ public:
 	void renderGrid();
 	void renderGridPoints();
 
-	void loadShaders();
-	void unloadShaders(); // unloads shaders but keeps code and data intact, so that they can be reloaded.
-	void deleteShaders();
-
 	void unloadDevice();
 	void reloadDevice();
 
@@ -111,19 +107,7 @@ public:
 
 	Vector ** drawGrid;
 
-	// returns handle > 0 on success
-	int loadShaderFile(const char *vert, const char *frag);
-	int loadShaderSrc(const char *vert, const char *frag);
-	Shader *getShaderPtr(int handle);
-	void setShaderPipelineSize(size_t size);
-	bool setShaderPipelinePos(int handle, size_t pos);
-	void deleteShader(int handle);
-
 protected:
-	int _insertShader(Shader *sh);
-
-	std::vector<Shader*> shaderPipeline; // Shaders are applied in this order. Can contain the same pointer more than once.
-	std::vector<Shader*> loadedShaders;
 	FrameBuffer backupBuffer;
 
 };
