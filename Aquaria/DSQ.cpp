@@ -868,6 +868,11 @@ static bool sdlVideoModeOK(const int w, const int h, const int bpp)
         }
         SDL_free(modes);
     }
+    else
+    {
+        return true;
+    }
+
     if (found_valid_mode) {
         return true;
     }

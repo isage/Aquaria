@@ -199,6 +199,8 @@ void Core::updateCursorFromJoystick(float dt, int spd)
 
 void Core::setWindowCaption(const std::string &caption, const std::string &icon)
 {
+    if (gScreen)
+        SDL_SetWindowTitle(gScreen, caption.c_str());
 }
 
 RenderObjectLayer *Core::getRenderObjectLayer(int i)
@@ -701,7 +703,7 @@ void Core::init()
 	flags.set(CF_CLEARBUFFERS);
 	quitNestedMainFlag = false;
 
-	if((SDL_Init(0))==-1)
+	if(!SDL_Init(0))
 	{
 		exit_error("Failed to init SDL");
 	}
@@ -755,7 +757,7 @@ bool Core::getMouseButtonState(int m)
 	case 2: mcode=2; break;
 	}
 
-	Uint8 mousestate = SDL_GetMouseState(NULL,NULL);
+	SDL_MouseButtonFlags mousestate = SDL_GetMouseState(NULL,NULL);
 
 	return mousestate & SDL_BUTTON_MASK(mcode);
 }
@@ -1026,13 +1028,13 @@ bool Core::initGraphicsLibrary(int width, int height, bool fullscreen, int vsync
 
 	if (recreate)
 	{
-		if (SDL_InitSubSystem(SDL_INIT_VIDEO) < 0)
+		if (!SDL_InitSubSystem(SDL_INIT_VIDEO))
 		{
 			exit_error(std::string("SDL Error: ") + std::string(SDL_GetError()));
 		}
 
 #if BBGE_BUILD_OPENGL_DYNAMIC
-		if (SDL_GL_LoadLibrary(NULL) == -1)
+		if (!SDL_GL_LoadLibrary(NULL))
 		{
 			std::string err = std::string("SDL_GL_LoadLibrary Error: ") + std::string(SDL_GetError());
 			SDL_Quit();
@@ -1063,6 +1065,7 @@ bool Core::initGraphicsLibrary(int width, int height, bool fullscreen, int vsync
 			SDL_Quit();
 			exit(0);
 		}
+		SDL_SetWindowPosition(gScreen, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED);
 		gGLctx = SDL_GL_CreateContext(gScreen);
 		if (gGLctx == NULL)
 		{
@@ -1091,7 +1094,7 @@ bool Core::initGraphicsLibrary(int width, int height, bool fullscreen, int vsync
 	SDL_GL_SwapWindow(gScreen);
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 	SDL_GL_SwapWindow(gScreen);
-	if ((_vsync != 1) || (SDL_GL_SetSwapInterval(-1) == -1))
+	if ((_vsync != 1) || (!SDL_GL_SetSwapInterval(-1)))
 		SDL_GL_SetSwapInterval(_vsync);
 	const char *name = SDL_GetCurrentVideoDriver();
 	SDL_SetWindowMouseGrab(gScreen, true);
@@ -1158,7 +1161,7 @@ void Core::enumerateScreenModes()
         const SDL_DisplayMode* mode = modes[i];
         if (mode->w && mode->h && (mode->w > mode->h))
         {
-            screenModes.push_back(ScreenMode(i, mode->w, mode->h, mode->refresh_rate));
+            screenModes.push_back(ScreenMode(i, mode->w, mode->h, std::ceil(mode->refresh_rate)));
         }
     }
     SDL_free(modes);
@@ -2215,7 +2218,7 @@ void Core::pollEvents()
 	if (updateMouse)
 	{
 		float x, y;
-		Uint8 mousestate = SDL_GetMouseState(&x,&y);
+		SDL_MouseButtonFlags mousestate = SDL_GetMouseState(&x,&y);
 
 		if (mouse.buttonsEnabled)
 		{
@@ -2299,7 +2302,7 @@ void Core::pollEvents()
 			}
 			break;
 
-			case SDL_EVENT_WINDOW_DESTROYED:
+			case SDL_EVENT_WINDOW_CLOSE_REQUESTED:
 			{
 					SDL_Quit();
 					_exit(0);
