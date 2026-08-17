@@ -295,9 +295,10 @@ bool UserSettings::loadDefaults(bool doApply)
 	}
 
 	errorLog("No default user settings file found! Controls may be broken.");
+	return false;
 }
 
-void UserSettings::load(bool doApply, const std::string &overrideFile)
+bool UserSettings::load(bool doApply, const std::string &overrideFile)
 {
 	std::string filename;
 
@@ -560,6 +561,7 @@ void UserSettings::load(bool doApply, const std::string &overrideFile)
 
 	if (doApply)
 		apply();
+	return true;
 }
 
 void UserSettings::apply()
