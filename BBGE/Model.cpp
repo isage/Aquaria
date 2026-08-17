@@ -23,7 +23,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 #include "cal3d/cal3d.h"
 
-#include "../ExternalLibs/glpng.h"
+#include "ImageLoader.h"
 
 const std::string modelPath = "models/";
 
@@ -205,8 +205,7 @@ bool Model::load(const std::string& _strFilename)
 
       // load the texture from the file
       GLuint textureId;
-	  pngInfo info;
-      textureId = pngBind((strPath + strFilename).c_str(), PNG_BUILDMIPMAPS, PNG_ALPHA, &info, GL_CLAMP, GL_LINEAR_MIPMAP_LINEAR, GL_LINEAR);
+      textureId = img_LoadGLTexture((strPath + strFilename), true, false, GL_CLAMP, GL_LINEAR_MIPMAP_LINEAR, GL_LINEAR);
 		  //loadTexture(strPath + strFilename);
 
       // store the opengl texture id in the user data of the map

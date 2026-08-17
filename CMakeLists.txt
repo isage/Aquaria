@@ -46,7 +46,6 @@ SET(LUASRCDIR ${LUADIR}/src)
 SET(LIBOGGDIR ${EXTLIBDIR}/libogg-1.3.0)
 SET(LIBVORBISDIR ${EXTLIBDIR}/libvorbis-1.3.3)
 SET(ZLIBDIR ${EXTLIBDIR}/glpng/zlib)
-SET(PNGDIR ${EXTLIBDIR}/glpng/png)
 
 ################ Look for external libraries
 
@@ -60,19 +59,9 @@ if(NOT ZLIB_FOUND)
     set(ZLIB_INCLUDE_DIRS ${ZLIBDIR})
 endif(NOT ZLIB_FOUND)
 
-### PNG
+### SDL3_image
 
-OPTION(AQUARIA_INTERNAL_PNG "Always use included PNG library" TRUE)
-if(NOT AQUARIA_INTERNAL_PNG)
-    find_package(PNG)
-endif(NOT AQUARIA_INTERNAL_PNG)
-if(NOT PNG_FOUND)
-    set(PNG_PNG_INCLUDE_DIR ${PNGDIR})
-    set(PNG_INCLUDE_DIR ${PNG_PNG_INCLUDE_DIR} ${ZLIB_INCLUDE_DIRS})
-endif(NOT PNG_FOUND)
-
-FILE(STRINGS "${PNG_PNG_INCLUDE_DIR}/png.h" PNG_H REGEX "^#define PNG_LIBPNG_VER[^0-9]*[0-9]+")
-STRING(REGEX REPLACE "^.*PNG_LIBPNG_VER[^0-9]*([0-9]+).*$" "\\1" PNG_LIBPNG_VER "${PNG_H}")
+find_package(SDL3_image REQUIRED)
 
 ### FreeType
 
@@ -219,7 +208,6 @@ endif(FTGL_FOUND)
 INCLUDE_DIRECTORIES(${BBGEDIR})
 INCLUDE_DIRECTORIES(${BBGEDIR}/GL)
 INCLUDE_DIRECTORIES(${ZLIB_INCLUDE_DIRS})
-INCLUDE_DIRECTORIES(${PNG_INCLUDE_DIR})
 INCLUDE_DIRECTORIES(${SRCDIR})
 INCLUDE_DIRECTORIES(${FTGL_INCLUDE_DIRS})
 INCLUDE_DIRECTORIES(${FREETYPE_INCLUDE_DIRS})
@@ -469,13 +457,13 @@ SET(BBGE_SRCS
     ${BBGEDIR}/StateManager.cpp
     ${BBGEDIR}/Strings.cpp
     ${BBGEDIR}/Texture.cpp
+    ${BBGEDIR}/ImageLoader.cpp
     ${BBGEDIR}/TTFFont.cpp
     ${BBGEDIR}/Vector.cpp
     ${BBGEDIR}/FmodOpenALBridge.cpp
     ${COCOA_SRCS}
     ${EXTLIBDIR}/DeflateCompressor.cpp
     ${EXTLIBDIR}/glfont2/glfont2.cpp
-    ${EXTLIBDIR}/glpng/glpng.c
     ${EXTLIBDIR}/minihttp.cpp
     ${EXTLIBDIR}/JPS.h
 )
@@ -491,20 +479,6 @@ SET(ZLIB_SRCS
     ${ZLIBDIR}/trees.c
     ${ZLIBDIR}/uncompr.c
     ${ZLIBDIR}/zutil.c
-)
-
-SET(PNG_SRCS
-    ${PNGDIR}/png.c
-    ${PNGDIR}/pngerror.c
-    ${PNGDIR}/pngget.c
-    ${PNGDIR}/pngmem.c
-    ${PNGDIR}/pngpread.c
-    ${PNGDIR}/pngread.c
-    ${PNGDIR}/pngrio.c
-    ${PNGDIR}/pngrtran.c
-    ${PNGDIR}/pngrutil.c
-    ${PNGDIR}/pngset.c
-    ${PNGDIR}/pngtrans.c
 )
 
 # Apparently not used at the moment. Listed here just for completeness.
@@ -696,6 +670,7 @@ IF(HAIKU)
 ENDIF()
 
 SET(OPTIONAL_LIBS ${OPTIONAL_LIBS} SDL3::SDL3)
+SET(OPTIONAL_LIBS ${OPTIONAL_LIBS} SDL3_image::SDL3_image)
 SET(OPTIONAL_LIBS ${OPTIONAL_LIBS} ${OPENAL_LIBRARY})
 
 IF(ZLIB_FOUND)
@@ -703,12 +678,6 @@ IF(ZLIB_FOUND)
 ELSE(ZLIB_FOUND)
     SET(OPTIONAL_SRCS ${OPTIONAL_SRCS} ${ZLIB_SRCS})
 ENDIF(ZLIB_FOUND)
-
-IF(PNG_FOUND)
-    SET(OPTIONAL_LIBS ${OPTIONAL_LIBS} ${PNG_LIBRARIES})
-ELSE(PNG_FOUND)
-    SET(OPTIONAL_SRCS ${OPTIONAL_SRCS} ${PNG_SRCS})
-ENDIF(PNG_FOUND)
 
 IF(NOT FTGL_FOUND)
 IF(FREETYPE_FOUND)

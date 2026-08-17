@@ -22,7 +22,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #define GAME_H
 
 #include "../BBGE/DebugFont.h"
-#include "../ExternalLibs/glpng.h"
+#include "../BBGE/ImageLoader.h"
 
 #include "DSQ.h"
 #include "AquariaMenuItem.h"
@@ -417,7 +417,7 @@ public:
 	bool isOn();
 
 	void generateLevel();
-	void skinLevel(pngRawInfo *png, int minX, int minY, int maxX, int maxY);
+	void skinLevel(RawImage *png, int minX, int minY, int maxX, int maxY);
 	void skinLevel();
 
 	void regenLevel();

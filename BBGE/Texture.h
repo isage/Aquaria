@@ -30,14 +30,6 @@ enum TextureLoadResult
 	TEX_LOADED  = 0x02,
 };
 
-struct ImageTGA
-{
-	int channels;			// The channels in the image (3 = RGB : 4 = RGBA)
-	int sizeX;				// The width of the image in pixels
-	int sizeY;				// The height of the image in pixels
-	unsigned char *data;	// The image pixel data
-};
-
 class Texture : public Refcounted
 {
 public:
@@ -57,9 +49,6 @@ public:
 
 	int width, height;
 
-	static ImageTGA *TGAload(const char* filename);
-	static ImageTGA *TGAloadMem(void *mem, int size);
-	
 	static bool useMipMaps;
 	bool repeat, repeating;
 
@@ -83,7 +72,7 @@ protected:
 	bool loadPNG(const std::string &file);
 	bool loadTGA(const std::string &file);
 	bool loadZGA(const std::string &file);
-	bool loadTGA(ImageTGA *tga);
+	bool loadGeneric(const std::string &file, const char *typeHint);
 
 	int ow, oh;
 	

@@ -19,7 +19,7 @@ along with this program; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 */
 #include "../BBGE/MathFunctions.h"
-#include "../ExternalLibs/glpng.h"
+#include "../BBGE/ImageLoader.h"
 #include "../BBGE/Gradient.h"
 #include "../BBGE/DebugFont.h"
 
@@ -1612,7 +1612,7 @@ public:
 	int rows;
 };
 
-bool getGrassPixel(pngRawInfo *png, int x, int y)
+bool getGrassPixel(RawImage *png, int x, int y)
 {
 	if (x >= png->Width || y >= png->Height || x < 0 || y < 0) return false;
 
@@ -1640,9 +1640,9 @@ void SceneEditor::skinLevel()
 		dsq->screenMessage("Cannot skin without generated level.");
 		return;
 	}
-	pngRawInfo rawinfo;
+	RawImage rawinfo;
 	std::string file = getMapTemplateFilename();
-	bool success = pngLoadRaw(file.c_str(), &rawinfo);
+	bool success = img_LoadRaw(file.c_str(), &rawinfo);
 	if (success)
 	{
 		skinLevel(&rawinfo, skinMinX, skinMinY, skinMaxX, skinMaxY);
@@ -1651,7 +1651,7 @@ void SceneEditor::skinLevel()
 	}
 }
 
-void SceneEditor::skinLevel(pngRawInfo *png, int minX, int minY, int maxX, int maxY)
+void SceneEditor::skinLevel(RawImage *png, int minX, int minY, int maxX, int maxY)
 {
 	std::vector<Element*> deleteElements;
 	int i = 0;
@@ -1851,8 +1851,8 @@ void SceneEditor::generateLevel()
 		firstColorX[i] = firstColorY[i] = -1;
 		lastColorX[i] = lastColorY[i] = -1;
 	}
-	pngRawInfo rawinfo;
-	bool success = pngLoadRaw(file.c_str(), &rawinfo);
+	RawImage rawinfo;
+	bool success = img_LoadRaw(file.c_str(), &rawinfo);
 	if (success)
 	{
 		//dsq->elements.clear();
