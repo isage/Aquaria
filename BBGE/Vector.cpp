@@ -22,6 +22,8 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "MathFunctions.h"
 #include "Base.h"
 #include <float.h>
+#include <glm/glm.hpp>
+#include <glm/gtc/matrix_transform.hpp>
 
 /*************************************************************************/
 
@@ -39,6 +41,18 @@ void Vector::rotate2DRad(float rad)
 
 // TODO: use glm
 
+Vector getRotatedVector(const Vector &vec, float rot)
+{
+    const glm::mat4 matrix =
+        glm::rotate(glm::mat4(1.0f), glm::radians(rot), glm::vec3(0.0f, 0.0f, 1.0f));
+
+    const glm::vec4 result =
+        matrix * glm::vec4(vec.x, vec.y, vec.z, 1.0f);
+
+    return Vector(result.x, result.y, result.z);
+}
+
+/*
 Vector getRotatedVector(const Vector &vec, float rot)
 {
 	glPushMatrix();
@@ -61,7 +75,7 @@ Vector getRotatedVector(const Vector &vec, float rot)
 	glPopMatrix();
 	return Vector(x,y,z);
 }
-
+*/
 // note update this from float lerp
 Vector lerp(const Vector &v1, const Vector &v2, float dt, int lerpType)
 {
