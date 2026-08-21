@@ -68,9 +68,6 @@ void RenderObject::applyBlendType()
 		case BLEND_ADD:
 			glBlendFunc(GL_SRC_ALPHA,GL_ONE);
 		break;
-		case BLEND_SUB:
-			glBlendFunc(GL_ZERO, GL_SRC_ALPHA);
-		break;
 		case BLEND_MULT:
 			glBlendFunc(GL_ZERO, GL_SRC_COLOR);
 		break;

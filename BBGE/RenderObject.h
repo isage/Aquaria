@@ -241,7 +241,7 @@ public:
 	bool fadeAlphaWithLife;
 
 	bool blendEnabled;
-	enum BlendTypes { BLEND_DEFAULT = 0, BLEND_ADD, BLEND_SUB, BLEND_MULT };
+	enum BlendTypes { BLEND_DEFAULT = 0, BLEND_ADD, BLEND_MULT };
 	unsigned char blendType;
 
 	float life;

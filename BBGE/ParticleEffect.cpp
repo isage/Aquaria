@@ -371,8 +371,6 @@ void ParticleEffect::bankLoad(const std::string &file, const std::string &path)
 				inf >> blendType;
 				if (blendType == "Add")
 					currentEmitter->data.blendType = BLEND_ADD;
-				else if (blendType == "Sub")
-					currentEmitter->data.blendType = RenderObject::BLEND_SUB;
 			}
 			else if (token == "Width")
 			{

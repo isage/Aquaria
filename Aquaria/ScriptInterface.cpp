@@ -10660,7 +10660,6 @@ static const struct {
 	luaConstantFromClass(BLEND_DEFAULT,	RenderObject),
 	luaConstantFromClass(BLEND_ADD,		RenderObject),
 	{"BLEND_ADDITIVE",					RenderObject::BLEND_ADD},
-	luaConstantFromClass(BLEND_SUB,		RenderObject),
 	luaConstantFromClass(BLEND_MULT,	RenderObject),
 
 	{"ENDING_NAIJACAVE",				10},
