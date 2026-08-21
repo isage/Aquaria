@@ -4870,18 +4870,7 @@ bool Game::loadSceneXML(std::string scene)
 
 		saveFile->InsertEndChild(newSF);
 	}
-	/*
-	XMLElement *boxElement = doc.FirstChildElement("BoxElement");
-	while (boxElement)
-	{
-		BoxElement *b = new BoxElement(atoi(boxElement->Attribute("w")), atoi(boxElement->Attribute("h")));
-		b->position = Vector(atoi(boxElement->Attribute("x")), atoi(boxElement->Attribute("y")));
-		addRenderObject(b, LR_BLACKGROUND);
-		b->position.z = boxElementZ;
-		dsq->addElement(b);
-		boxElement = boxElement->NextSiblingElement("BoxElement");
-	}
-	*/
+
 	std::vector<Element*> loadedElements;
 	loadedElements.reserve(200);
 	XMLElement *simpleElements = doc.FirstChildElement("SE");

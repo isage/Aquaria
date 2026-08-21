@@ -35,7 +35,6 @@ BUILD_LINUX
 #include "ActionMapper.h"
 #include "Event.h"
 #include "StateManager.h"
-#include "Light.h"
 #include "Flags.h"
 //#include "Scripting.h"
 #include "Effects.h"

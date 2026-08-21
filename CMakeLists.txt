@@ -394,14 +394,6 @@ SET(AQUARIA_SRCS
     ${SRCDIR}/WorldMapTiles.cpp
 )
 
-# Apparently not used at the moment. Listed here just for completeness.
-SET(AQUARIA_SRCS_UNUSED
-    ${SRCDIR}/BoxElement.cpp
-    ${SRCDIR}/BubbleRender.cpp
-    ${SRCDIR}/FFTNotes.cpp
-    ${SRCDIR}/StarRenderer.cpp
-    ${SRCDIR}/WaterFont.cpp
-)
 
 IF(CMAKE_COMPILER_IS_GNUCC OR CMAKE_COMPILER_IS_GNUCXX)
 SET_SOURCE_FILES_PROPERTIES(
@@ -479,24 +471,6 @@ SET(ZLIB_SRCS
     ${ZLIBDIR}/trees.c
     ${ZLIBDIR}/uncompr.c
     ${ZLIBDIR}/zutil.c
-)
-
-# Apparently not used at the moment. Listed here just for completeness.
-SET(BBGE_SRCS_UNUSED
-    ${BBGEDIR}/AnimatedSprite.cpp
-    ${BBGEDIR}/BloomEffect.cpp
-    ${BBGEDIR}/CShim.cpp
-    ${BBGEDIR}/Cutscene.cpp
-    ${BBGEDIR}/Datafile.cpp
-    ${BBGEDIR}/DFSprite.cpp
-    ${BBGEDIR}/FileVars.cpp
-    ${BBGEDIR}/Interpolator.cpp
-    ${BBGEDIR}/Light.cpp
-    ${BBGEDIR}/LightCone.cpp
-    ${BBGEDIR}/Model.cpp
-    ${BBGEDIR}/OggStream.cpp
-    ${BBGEDIR}/PackRead.cpp
-    ${BBGEDIR}/PointSprites.cpp
 )
 
 IF(CMAKE_COMPILER_IS_GNUCC OR CMAKE_COMPILER_IS_GNUCXX)
