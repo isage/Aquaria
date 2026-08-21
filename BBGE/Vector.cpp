@@ -52,30 +52,6 @@ Vector getRotatedVector(const Vector &vec, float rot)
     return Vector(result.x, result.y, result.z);
 }
 
-/*
-Vector getRotatedVector(const Vector &vec, float rot)
-{
-	glPushMatrix();
-	glLoadIdentity();
-
-	glRotatef(rot, 0, 0, 1);
-
-	if (vec.x != 0 || vec.y != 0)
-	{
-		//glRotatef(this->rotation.z, 0,0,1,this->rotation.z);
-		glTranslatef(vec.x, vec.y, 0);
-	}
-
-	float m[16];
-	glGetFloatv(GL_MODELVIEW_MATRIX, m);
-	float x = m[12];
-	float y = m[13];
-	float z = m[14];
-
-	glPopMatrix();
-	return Vector(x,y,z);
-}
-*/
 // note update this from float lerp
 Vector lerp(const Vector &v1, const Vector &v2, float dt, int lerpType)
 {
