@@ -49,6 +49,7 @@ BUILD_LINUX
 */
 
 #include "FrameBuffer.h"
+#include "RenderTransform.h"
 
 class ParticleEffect;
 
@@ -105,14 +106,6 @@ const int baseVirtualHeight		= 600;
 
 enum GameKeys
 {
-	// replace with GLFW equivalent
-	/*
-	KEY_DOWNARROW = GLFW_KEY_DOWN,
-	KEY_RIGHTARROW = GLFW_KEY_RIGHT,
-	KEY_UPARROW = GLFW_KEY_UP,
-	KEY_LEFTARROW = GLFW_KEY_LEFT,
-	*/
-
 	KEY_LSUPER,
 	KEY_RSUPER,
 	KEY_LMETA,
@@ -409,7 +402,7 @@ protected:
 	bool optimizeStatic;
 	bool displayListValid;
 	int displayListGeneration;
-	struct DisplayListElement {
+/*	struct DisplayListElement {
 		DisplayListElement() {isList = false; u.robj = 0;}
 		bool isList;  // True if this is a GL display list
 		union {
@@ -418,7 +411,7 @@ protected:
 		} u;
 	};
 	std::vector<DisplayListElement> displayList;
-
+*/
 #ifdef RLT_DYNAMIC
 	RenderObjectList renderObjectList;
 	RenderObjectList::iterator iter;
@@ -449,7 +442,6 @@ public:
 	void initRenderObjectLayers(int num);
 
 	void applyState(const std::string &state);
-	//bool createGlWindow(char* title, int width, int height, int bits, bool fullscreenflag);
 	bool createWindow(int width, int height, int bits, bool fullscreen, std::string windowTitle="");
 	//void setWindowTitle(const std::string &title); // func not yet written
 	void clearBuffers();	
@@ -458,12 +450,22 @@ public:
 	void quit();
 	bool isShuttingDown();
 	bool isWindowFocus();
+	SDL_Renderer *getRenderer();
+	RenderTransformStack transform;
+	// Re-applies viewOffX/viewOffY (a letterboxing offset from the old
+	// GL pipeline's *projection* matrix, which glLoadIdentity() never
+	// touched - only *modelview*) after every reset to identity.
+	//
+
+	void loadBaseTransform()
+	{
+		transform.loadIdentity();
+		transform.translate((float)viewOffX, (float)viewOffY, 0);
+	}
 
 	void instantQuit();
 
 	void cacheRender();
-
-	void setSDLGLAttributes();
 
 	void reloadResources();
 	void unloadResources();
@@ -649,10 +651,7 @@ public:
 	void rotateMatrixStack(float x, float y, float z);
 	void scaleMatrixStack(float x, float y, float z=1);
 	void rotateMatrixStack(float z);
-	void setColor(float r, float g, float b, float a);
 
-	void bindTexture(int stage, unsigned int handle);
-	
 	bool getKeyState(int k);
 	bool getMouseButtonState(int m);
 	
@@ -674,8 +673,6 @@ public:
 	int redBits, greenBits, blueBits, alphaBits;
 
 	void setupRenderPositionAndScale();
-	void setupGlobalResolutionScale();
-
 	
 	int particlesPaused;
 
@@ -693,6 +690,7 @@ public:
 
 	Joystick joystick;
 	void setClearColor(const Vector &c);
+	const Vector &getClearColor() const { return clearColor; }
 	Vector getClearColor();
 	int flipMouseButtons;
 	void initFrameBuffer();

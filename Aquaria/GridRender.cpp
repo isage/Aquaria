@@ -20,6 +20,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 */
 #include "GridRender.h"
 #include "Game.h"
+#include <vector>
 
 GridRender::GridRender(ObsType obsType) : RenderObject()
 {
@@ -39,19 +40,28 @@ void GridRender::onUpdate(float dt)
 	if (obsType != OT_BLACK) { blendEnabled = true; }
 }
 
-inline static void doRenderGrid(int x, int startCol, int endCol)
+static void doRenderGrid(std::vector<SDL_Vertex> &verts, std::vector<int> &indices,
+	int x, int startCol, int endCol, SDL_FColor col)
 {
 	const int drawx1 = x*TILE_SIZE;
 	const int drawx2 = (x+1)*TILE_SIZE;
 	const int drawy1 = startCol*TILE_SIZE;
 	const int drawy2 = (endCol+1)*TILE_SIZE;
 
-	glBegin(GL_QUADS);
-	glVertex3i(drawx1, drawy2, 0.0f);
-	glVertex3i(drawx2, drawy2, 0.0f);
-	glVertex3i(drawx2, drawy1, 0.0f);
-	glVertex3i(drawx1, drawy1, 0.0f);
-	glEnd();
+	glm::vec4 p0 = core->transform.transformPoint(drawx1, drawy2);
+	glm::vec4 p1 = core->transform.transformPoint(drawx2, drawy2);
+	glm::vec4 p2 = core->transform.transformPoint(drawx2, drawy1);
+	glm::vec4 p3 = core->transform.transformPoint(drawx1, drawy1);
+
+	int base = (int)verts.size();
+	SDL_Vertex v;
+	v.color = col;
+	v.position={p0.x,p0.y}; v.tex_coord={0,0}; verts.push_back(v);
+	v.position={p1.x,p1.y}; v.tex_coord={0,0}; verts.push_back(v);
+	v.position={p2.x,p2.y}; v.tex_coord={0,0}; verts.push_back(v);
+	v.position={p3.x,p3.y}; v.tex_coord={0,0}; verts.push_back(v);
+	indices.push_back(base+0); indices.push_back(base+1); indices.push_back(base+2);
+	indices.push_back(base+0); indices.push_back(base+2); indices.push_back(base+3);
 }
 
 void GridRender::onRender()
@@ -76,6 +86,11 @@ void GridRender::onRender()
 		endY = MAX_GRID-1;
 	if (startY > endY)
 		return;
+
+	std::vector<SDL_Vertex> verts;
+	std::vector<int> indices;
+	SDL_FColor col = {effectiveColor.x, effectiveColor.y, effectiveColor.z, effectiveAlpha};
+
 	for (int x = startX; x <= endX; ++x)
 	{
 		const unsigned char *gridColumn = dsq->game->getGridColumn(x);
@@ -94,7 +109,7 @@ void GridRender::onRender()
 		{
 			if (gridColumn[y] != obsType)
 			{
-				doRenderGrid(x, startCol, y - 1);
+				doRenderGrid(verts, indices, x, startCol, y - 1, col);
 
 				// fast-forward to next drawable byte
 				if(const unsigned char *next = (const unsigned char*)memchr(gridColumn + y, obsType, endY - y)) // find next byte with correct obs type
@@ -108,7 +123,17 @@ void GridRender::onRender()
 		}
 		if (y == endY)
 		{
-			doRenderGrid(x, startCol, y);
+			doRenderGrid(verts, indices, x, startCol, y, col);
+		}
+	}
+
+	if (!verts.empty())
+	{
+		SDL_Renderer *renderer = core->getRenderer();
+		if (renderer)
+		{
+			SDL_SetRenderDrawBlendMode(renderer, currentBlendMode);
+			SDL_RenderGeometry(renderer, NULL, verts.data(), (int)verts.size(), indices.data(), (int)indices.size());
 		}
 	}
 }
@@ -149,24 +174,30 @@ void SongLineRender::clear()
 void SongLineRender::onRender()
 {
 	int w=core->getWindowWidth();
-	//core->getWindowWidth(&w);
-	int ls = (4*w)/1024.0f;
-	if (ls < 0)
-		ls = 1;
 
-	glLineWidth(ls);
+	SDL_Renderer *renderer = core->getRenderer();
+	if (!renderer || pts.size() < 2) return;
+
 	const int alphaLine = pts.size()*(0.9f);
 	float a = 1;
-	glBegin(GL_LINE_STRIP);
-	for (int i = 0; i < pts.size(); i++)
+
+	// GL_LINE_STRIP had smooth per-vertex color interpolation along each
+	// segment; SDL_RenderLine only takes a single flat color per call, so
+	// this draws each segment with its leading vertex's color instead of
+	// a true gradient - a close approximation for a thin cosmetic trail,
+	// not pixel-identical to the old GL_LINE_STRIP.
+	for (int i = 0; i < (int)pts.size()-1; i++)
 	{
 		if (i < alphaLine)
 			a = float(i)/float(alphaLine);
 		else
-			a = 1;		
-		glColor4f(pts[i].color.x, pts[i].color.y, pts[i].color.z, a);
-		glVertex2f(pts[i].pt.x, pts[i].pt.y);
+			a = 1;
+
+		glm::vec4 p0 = core->transform.transformPoint(pts[i].pt.x, pts[i].pt.y);
+		glm::vec4 p1 = core->transform.transformPoint(pts[i+1].pt.x, pts[i+1].pt.y);
+
+		SDL_SetRenderDrawColorFloat(renderer, pts[i].color.x, pts[i].color.y, pts[i].color.z, a);
+		SDL_RenderLine(renderer, p0.x, p0.y, p1.x, p1.y);
 	}
-	glEnd();
 }
 

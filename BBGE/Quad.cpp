@@ -22,6 +22,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "Core.h"
 
 #include <assert.h>
+#include <vector>
 
 Vector Quad::renderBorderColor = Vector(1,1,1);
 
@@ -245,6 +246,7 @@ void Quad::initQuad()
 	repeatingTextureToFill = false;
 	
 	drawGrid = 0;
+	textureOverride = 0;
 
 	renderBorder = false;
 	renderCenter = true;
@@ -395,85 +397,69 @@ void Quad::renderGrid()
 		(lowerRightTextureCoordinates.y < upperLeftTextureCoordinates.y)
 		? lowerRightTextureCoordinates.y : upperLeftTextureCoordinates.y;
 
-	// NOTE: These are used to avoid repeated expensive divide operations,
-	// but they may cause rounding error of around 1 part per million,
-	// which could in theory cause minor graphical glitches with broken
-	// OpenGL implementations.  --achurch
 	const float incX = percentX / (float)(xDivs-1);
 	const float incY = percentY / (float)(yDivs-1);
 
 	const float w = this->getWidth();
 	const float h = this->getHeight();
 
-	const float red   = this->color.x;
-	const float green = this->color.y;
-	const float blue  = this->color.z;
-	const float alpha = this->alpha.x * this->alphaMod;
+	const float red   = this->effectiveColor.x;
+	const float green = this->effectiveColor.y;
+	const float blue  = this->effectiveColor.z;
+	const float alphaVal = this->effectiveAlpha;
 
-	/*
-	glDisable(GL_BLEND);
-	glDisable(GL_CULL_FACE);
-	*/
-	glBegin(GL_QUADS);
+	SDL_Renderer *renderer = core->getRenderer();
+	if (!renderer) return;
+	SDL_Texture *tex = textureOverride ? textureOverride : (texture ? texture->sdlTexture : 0);
+
+	std::vector<SDL_Vertex> verts;
+	std::vector<int> indices;
+	verts.reserve((size_t)(xDivs-1) * (yDivs-1) * 4);
+	indices.reserve((size_t)(xDivs-1) * (yDivs-1) * 6);
+
 	float u0 = baseX;
 	float u1 = u0 + incX;
 	for (int i = 0; i < (xDivs-1); i++, u0 = u1, u1 += incX)
 	{
-		float v0 = 1 - percentY + baseY;
+		float v0 = baseY;
 		float v1 = v0 + incY;
 		for (int j = 0; j < (yDivs-1); j++, v0 = v1, v1 += incY)
 		{
 			if (drawGrid[i][j].z != 0 || drawGrid[i][j+1].z != 0 || drawGrid[i+1][j].z != 0 || drawGrid[i+1][j+1].z != 0)
 			{
+				glm::vec4 p00 = core->transform.transformPoint(w*drawGrid[i][j].x,     h*drawGrid[i][j].y);
+				glm::vec4 p01 = core->transform.transformPoint(w*drawGrid[i][j+1].x,   h*drawGrid[i][j+1].y);
+				glm::vec4 p11 = core->transform.transformPoint(w*drawGrid[i+1][j+1].x, h*drawGrid[i+1][j+1].y);
+				glm::vec4 p10 = core->transform.transformPoint(w*drawGrid[i+1][j].x,   h*drawGrid[i+1][j].y);
 
-				glColor4f(red, green, blue, alpha*drawGrid[i][j].z);
-				glTexCoord2f(u0, v0);
-					//glMultiTexCoord2fARB(GL_TEXTURE0_ARB, u0-baseX, v0-baseY);
-					//glMultiTexCoord2fARB(GL_TEXTURE1_ARB,0,0);
-				glVertex2f(w*drawGrid[i][j].x,		h*drawGrid[i][j].y);
-				//
-				glColor4f(red, green, blue, alpha*drawGrid[i][j+1].z);
-				glTexCoord2f(u0, v1);
-					//glMultiTexCoord2fARB(GL_TEXTURE0_ARB, u0-baseX, v1-baseY);
-					//glMultiTexCoord2fARB(GL_TEXTURE1_ARB,0,(float)(screenHeight/(yDivs-1))/16);
-				glVertex2f(w*drawGrid[i][j+1].x,		h*drawGrid[i][j+1].y);
-				//
-				glColor4f(red, green, blue, alpha*drawGrid[i+1][j+1].z);
-				glTexCoord2f(u1, v1);
-					//glMultiTexCoord2fARB(GL_TEXTURE0_ARB, u1-baseX, v1-baseY);
-					//glMultiTexCoord2fARB(GL_TEXTURE1_ARB,(float)(screenWidth/(xDivs-1))/16,(float)(screenHeight/(yDivs-1))/16);
-				glVertex2f(w*drawGrid[i+1][j+1].x,	h*drawGrid[i+1][j+1].y);
-				//
-				glColor4f(red, green, blue, alpha*drawGrid[i+1][j].z);
-				glTexCoord2f(u1, v0);
-					//glMultiTexCoord2fARB(GL_TEXTURE0_ARB, u1-baseX, v0-baseY);
-					//glMultiTexCoord2fARB(GL_TEXTURE1_ARB,(float)(screenWidth/(xDivs-1))/16,0);
-				glVertex2f(w*drawGrid[i+1][j].x,		h*drawGrid[i+1][j].y);
+				int base = (int)verts.size();
+				SDL_Vertex v;
+
+				v.color = {red, green, blue, alphaVal*drawGrid[i][j].z};
+				v.position = {p00.x, p00.y}; v.tex_coord = {u0, v0}; verts.push_back(v);
+
+				v.color = {red, green, blue, alphaVal*drawGrid[i][j+1].z};
+				v.position = {p01.x, p01.y}; v.tex_coord = {u0, v1}; verts.push_back(v);
+
+				v.color = {red, green, blue, alphaVal*drawGrid[i+1][j+1].z};
+				v.position = {p11.x, p11.y}; v.tex_coord = {u1, v1}; verts.push_back(v);
+
+				v.color = {red, green, blue, alphaVal*drawGrid[i+1][j].z};
+				v.position = {p10.x, p10.y}; v.tex_coord = {u1, v0}; verts.push_back(v);
+
+				indices.push_back(base+0); indices.push_back(base+1); indices.push_back(base+2);
+				indices.push_back(base+0); indices.push_back(base+2); indices.push_back(base+3);
 			}
 		}
 	}
-	glEnd();
 
-	// debug points
-	if (RenderObject::renderCollisionShape)
+	if (!verts.empty())
 	{
-		glBindTexture(GL_TEXTURE_2D, 0);
-		glPointSize(2);
-		glColor3f(1,0,0);
-		glBegin(GL_POINTS);
-			for (int i = 0; i < (xDivs-1); i++)
-			{
-				for (int j = 0; j < (yDivs-1); j++)
-				{
-					glVertex2f(w*drawGrid[i][j].x,		h*drawGrid[i][j].y);
-					glVertex2f(w*drawGrid[i][j+1].x,		h*drawGrid[i][j+1].y);
-					glVertex2f(w*drawGrid[i+1][j+1].x,	h*drawGrid[i+1][j+1].y);
-					glVertex2f(w*drawGrid[i+1][j].x,		h*drawGrid[i+1][j].y);
-				}
-			}
-		glEnd();
-		if (texture)
-			glBindTexture(GL_TEXTURE_2D, texture->textures[0]);
+		if (tex)
+			SDL_SetTextureBlendMode(tex, currentBlendMode);
+		else
+			SDL_SetRenderDrawBlendMode(renderer, currentBlendMode);
+		SDL_RenderGeometry(renderer, tex, verts.data(), (int)verts.size(), indices.data(), (int)indices.size());
 	}
 }
 
@@ -495,56 +481,113 @@ void Quad::onRender()
 
 	if (!strip.empty())
 	{
-		//glDisable(GL_BLEND);gggg
-		//glDisable(GL_CULL_FACE);
-
-		const float texBits = 1.0f / (strip.size()-1);
-
-		glBegin(GL_QUAD_STRIP);
-
-		if (!stripVert)
+		SDL_Renderer *renderer = core->getRenderer();
+		if (renderer && strip.size() >= 2 && !stripVert)
 		{
-			for (int i = 0; i < strip.size(); i++)
+			SDL_Texture *tex = textureOverride ? textureOverride : (texture ? texture->sdlTexture : 0);
+			const float texBits = 1.0f / (strip.size()-1);
+
+			// GL_QUAD_STRIP -> triangle list: strip.size() points define
+			// strip.size()-1 quads, each sharing an edge with the next.
+			std::vector<SDL_Vertex> verts;
+			verts.reserve(strip.size() * 2);
+			SDL_FColor col = {effectiveColor.x, effectiveColor.y, effectiveColor.z, effectiveAlpha};
+
+			for (size_t i = 0; i < strip.size(); i++)
 			{
-				glTexCoord2f(texBits*i, 0);
-				glVertex2f(strip[i].x*width-_w2,  strip[i].y*_h2*10 - _h2);
-				glTexCoord2f(texBits*i, 1);
-				glVertex2f(strip[i].x*width-_w2,  strip[i].y*_h2*10 + _h2);
+				glm::vec4 top = core->transform.transformPoint(strip[i].x*width-_w2, strip[i].y*_h2*10 - _h2);
+				glm::vec4 bot = core->transform.transformPoint(strip[i].x*width-_w2, strip[i].y*_h2*10 + _h2);
+
+				SDL_Vertex v;
+				v.color = col;
+				v.position = {top.x, top.y}; v.tex_coord = {texBits*(float)i, 0}; verts.push_back(v);
+				v.position = {bot.x, bot.y}; v.tex_coord = {texBits*(float)i, 1}; verts.push_back(v);
 			}
-		}
-		glEnd();
 
-		//glEnable(GL_CULL_FACE);
-		glBindTexture( GL_TEXTURE_2D, 0 );
-		glColor4f(1,0,0,1);
-		glPointSize(64);
+			std::vector<int> indices;
+			indices.reserve((strip.size()-1) * 6);
+			for (size_t i = 0; i + 1 < strip.size(); i++)
+			{
+				int base = (int)i * 2;
+				// quad (base, base+1, base+3, base+2) matching the
+				// top/bottom pairing above
+				indices.push_back(base+0); indices.push_back(base+1); indices.push_back(base+3);
+				indices.push_back(base+0); indices.push_back(base+3); indices.push_back(base+2);
+			}
 
-		glBegin(GL_POINTS);
-		for (int i = 0; i < strip.size(); i++)
-		{
-			glVertex2f((strip[i].x*width)-_w2, strip[i].y*height);
+			if (tex)
+				SDL_SetTextureBlendMode(tex, currentBlendMode);
+			else
+				SDL_SetRenderDrawBlendMode(renderer, currentBlendMode);
+			SDL_RenderGeometry(renderer, tex, verts.data(), (int)verts.size(), indices.data(), (int)indices.size());
 		}
-		glEnd();
 	}
 	else
 	{
 		if (!drawGrid)
 		{
-			glBegin(GL_QUADS);
+			SDL_Renderer *renderer = core->getRenderer();
+			if (renderer)
 			{
-				glTexCoord2f(upperLeftTextureCoordinates.x, 1.0f-upperLeftTextureCoordinates.y);
-				glVertex2f(-_w2, +_h2);
+				SDL_Texture *tex = textureOverride ? textureOverride : (texture ? texture->sdlTexture : 0);
 
-				glTexCoord2f(lowerRightTextureCoordinates.x, 1.0f-upperLeftTextureCoordinates.y);
-				glVertex2f(+_w2, +_h2);
+				SDL_FColor col;
+				col.r = effectiveColor.x;
+				col.g = effectiveColor.y;
+				col.b = effectiveColor.z;
+				col.a = effectiveAlpha;
 
-				glTexCoord2f(lowerRightTextureCoordinates.x, 1.0f-lowerRightTextureCoordinates.y);
-				glVertex2f(+_w2, -_h2);
+				// Local-space corners (upper-left, upper-right, lower-right,
+				// lower-left - same order as the old glBegin(GL_QUADS) block),
+				// transformed by the current world transform. This replaces
+				// what the implicit GL matrix stack used to do to each
+				// glVertex2f() call.
+				glm::vec4 wp0 = core->transform.transformPoint(-_w2, +_h2);
+				glm::vec4 wp1 = core->transform.transformPoint(+_w2, +_h2);
+				glm::vec4 wp2 = core->transform.transformPoint(+_w2, -_h2);
+				glm::vec4 wp3 = core->transform.transformPoint(-_w2, -_h2);
 
-				glTexCoord2f(upperLeftTextureCoordinates.x, 1.0f-lowerRightTextureCoordinates.y);
-				glVertex2f(-_w2, -_h2);
+				// wp0/wp1 are the BOTTOM screen vertices (+_h2, Y-down),
+				// wp2/wp3 are the TOP screen vertices (-_h2). With V=0 at
+				// the texture's top row (confirmed empirically - see the
+				// migration notes on this fix), bottom vertices sample
+				// lowerRightTextureCoordinates.y and top vertices sample
+				// upperLeftTextureCoordinates.y directly, un-flipped. The
+                // previous "1.0f - upperLeft.y"/"1.0f - lowerRight.y" was
+                // copied verbatim from the original GL code, which was
+                // compensating for a GL-specific convention that doesn't
+                // apply to this SDL3 pipeline - for the common full-image
+                // (0,0)-(1,1) case the two formulas coincidentally agree,
+                // but they diverge (and the old one is wrong) for any
+                // sub-region UV, e.g. a packed sprite-sheet frame.
+				SDL_Vertex verts[4];
+				verts[0].position.x = wp0.x; verts[0].position.y = wp0.y;
+				verts[0].tex_coord.x = upperLeftTextureCoordinates.x;
+				verts[0].tex_coord.y = lowerRightTextureCoordinates.y;
+
+				verts[1].position.x = wp1.x; verts[1].position.y = wp1.y;
+				verts[1].tex_coord.x = lowerRightTextureCoordinates.x;
+				verts[1].tex_coord.y = lowerRightTextureCoordinates.y;
+
+				verts[2].position.x = wp2.x; verts[2].position.y = wp2.y;
+				verts[2].tex_coord.x = lowerRightTextureCoordinates.x;
+				verts[2].tex_coord.y = upperLeftTextureCoordinates.y;
+
+				verts[3].position.x = wp3.x; verts[3].position.y = wp3.y;
+				verts[3].tex_coord.x = upperLeftTextureCoordinates.x;
+				verts[3].tex_coord.y = upperLeftTextureCoordinates.y;
+
+				verts[0].color = verts[1].color = verts[2].color = verts[3].color = col;
+
+				static const int indices[6] = { 0, 1, 2, 0, 2, 3 };
+
+				if (tex)
+					SDL_SetTextureBlendMode(tex, currentBlendMode);
+				else
+					SDL_SetRenderDrawBlendMode(renderer, currentBlendMode);
+
+				SDL_RenderGeometry(renderer, tex, verts, 4, indices, 6);
 			}
-			glEnd();
 		}
 		else
 		{
@@ -554,31 +597,30 @@ void Quad::onRender()
 
 	if (renderBorder)
 	{
-		glLineWidth(2);
-
-		glBindTexture(GL_TEXTURE_2D, 0);
-
-		glColor4f(renderBorderColor.x, renderBorderColor.y, renderBorderColor.z, borderAlpha*alpha.x*alphaMod);
-
-		if (renderCenter)
+		SDL_Renderer *renderer = core->getRenderer();
+		if (renderer)
 		{
-			glPointSize(16);
-			glBegin(GL_POINTS);
-				glVertex2f(0,0);
-			glEnd();
-		}
+			SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_BLEND);
 
-		glColor4f(renderBorderColor.x, renderBorderColor.y, renderBorderColor.z, 1*alpha.x*alphaMod);
-		glBegin(GL_LINES);
-			glVertex2f(-_w2, _h2);
-			glVertex2f(_w2, _h2);
-			glVertex2f(_w2, -_h2);
-			glVertex2f(_w2, _h2);
-			glVertex2f(-_w2, -_h2);
-			glVertex2f(-_w2, _h2);
-			glVertex2f(-_w2, -_h2);
-			glVertex2f(_w2, -_h2);
-		glEnd();
+			if (renderCenter)
+			{
+				// TODO: the 16px center point
+				// (glPointSize(16)) has no direct SDL_RenderGeometry
+				// equivalent (no fixed-size screen-space point primitive)
+			}
+
+			glm::vec4 c0 = core->transform.transformPoint(-_w2, +_h2);
+			glm::vec4 c1 = core->transform.transformPoint(+_w2, +_h2);
+			glm::vec4 c2 = core->transform.transformPoint(+_w2, -_h2);
+			glm::vec4 c3 = core->transform.transformPoint(-_w2, -_h2);
+
+			SDL_FPoint pts[5] = {
+				{c0.x, c0.y}, {c1.x, c1.y}, {c2.x, c2.y}, {c3.x, c3.y}, {c0.x, c0.y}
+			};
+			SDL_SetRenderDrawColorFloat(renderer, renderBorderColor.x, renderBorderColor.y,
+				renderBorderColor.z, 1.0f*alpha.x*alphaMod);
+			SDL_RenderLines(renderer, pts, 5);
+		}
 		RenderObject::lastTextureApplied = 0;
 	}
 }

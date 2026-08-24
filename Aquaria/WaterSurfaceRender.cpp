@@ -189,14 +189,8 @@ void WaterSurfaceRender::render()
 void WaterSurfaceRender::onRender()
 {
 	if (dsq->game->waterLevel == 0) return;
-	if (dsq->useFrameBuffer && dsq->frameBuffer.isInited())
-	{
-		dsq->frameBuffer.bindTexture();
-	}
-	else
-	{
-		glBindTexture(GL_TEXTURE_2D, 0);
-	}
+
+	textureOverride = 0;
 
 	if (dsq->useFrameBuffer && dsq->frameBuffer.isInited())
 	{
@@ -214,29 +208,22 @@ void WaterSurfaceRender::onRender()
 		upperLeftTextureCoordinates.x = 0;
 		lowerRightTextureCoordinates.x = core->frameBuffer.getWidthP();
 
-
+		textureOverride = core->frameBuffer.getTexture();
 		Quad::onRender();
-
-		/*
-		glTranslatef(0, -height - 20);
-		height = 40;
-
-
-		Quad::onRender();
-		*/
-
-		glBindTexture(GL_TEXTURE_2D, 0);
+		textureOverride = 0;
 	}
 	else
 	{
-		/*
-		upperLeftTextureCoordinates.x = 0;
-		lowerRightTextureCoordinates.x = core->frameBuffer.getWidthP();
-		*/
-		glColor4f(0.4, 0.7, 0.8, 0.2);
+		// Old code set glColor4f() directly here to override the draw
+		// color for just this call - effectiveColor/effectiveAlpha are
+		// this codebase's replacement for that (see RenderObject.h): they
+		// were already computed once in renderCall() before onRender() ran,
+		// so overriding `color`/`alpha` here (as the old code effectively
+		// did via GL) wouldn't reach the draw - overriding the *effective*
+		// values directly does.
+		effectiveColor = Vector(0.4f, 0.7f, 0.8f);
+		effectiveAlpha = 0.2f;
 		Quad::onRender();
-
-		glBindTexture(GL_TEXTURE_2D, 0);
 	}
 
 	RenderObject::lastTextureApplied = 0;

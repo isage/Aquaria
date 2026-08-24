@@ -77,6 +77,8 @@ public:
 	
 	void reloadDevice();
 
+	SDL_Texture *textureOverride;
+
 	void deleteGrid();
 
 

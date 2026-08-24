@@ -19,6 +19,7 @@ along with this program; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 */
 #include "Segmented.h"
+#include "../BBGE/Core.h"
 
 Strand::Strand(const Vector &position, int segs, int dist) : RenderObject(), Segmented(dist, dist)
 {
@@ -53,12 +54,18 @@ void Strand::onRender()
 	const int numSegments = segments.size();
 	if (numSegments == 0) return;
 
-	glEnable(GL_BLEND);
-	glTranslatef(-position.x, -position.y, 0);
-	glLineWidth(1);
+	SDL_Renderer *renderer = core->getRenderer();
+	if (!renderer) return;
 
-	glBegin(GL_LINE_STRIP);
-	//glColor4f(0.25,0.25,0.5,1);
+	// Undoes this object's own world-position translate (segments[] store
+	// absolute/world positions already) - matches the original's
+	// un-paired glTranslatef(-position...): the enclosing
+	// RenderObject::renderCall() pop's the whole accumulated transform
+	// after onRender() returns, so there's nothing to restore here either.
+	core->transform.translate(-position.x, -position.y, 0);
+
+	SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_BLEND);
+
 	// Use fixed-point math to speed things up.  --achurch
 	unsigned int r = (unsigned int)(color.x * (255<<8));
 	unsigned int g = (unsigned int)(color.y * (255<<8));
@@ -68,25 +75,35 @@ void Strand::onRender()
 	unsigned int dg = g/50;
 	unsigned int db = b/50;
 	unsigned int da = a/numSegments;
-	glColor4ub(r>>8, g>>8, b>>8, a>>8);
-	glVertex2f(position.x, position.y);
-	glVertex2f(segments[0]->position.x, segments[0]->position.y);
+
+	// GL_LINE_STRIP had smooth per-vertex color interpolation; SDL_RenderLine
+	// only takes one flat color per call, so each segment below is drawn
+	// with its leading vertex's color instead of a true gradient - a close
+	// approximation for this thin strand visual, not pixel-identical.
+	glm::vec4 prevPt = core->transform.transformPoint(position.x, position.y);
+	Uint8 pr=r>>8, pg=g>>8, pb=b>>8, pa=a>>8;
+
+	glm::vec4 seg0 = core->transform.transformPoint(segments[0]->position.x, segments[0]->position.y);
+	SDL_SetRenderDrawColor(renderer, pr, pg, pb, pa);
+	SDL_RenderLine(renderer, prevPt.x, prevPt.y, seg0.x, seg0.y);
+	prevPt = seg0;
+
 	const int colorLimit = numSegments<50 ? numSegments : 50;
 	int i;
 	for (i = 1; i < colorLimit; i++)
 	{
-		r -= dr;
-		g -= dg;
-		b -= db;
-		a -= da;
-		glColor4ub(r>>8, g>>8, b>>8, a>>8);
-		glVertex2f(segments[i]->position.x, segments[i]->position.y);
+		r -= dr; g -= dg; b -= db; a -= da;
+		glm::vec4 pt = core->transform.transformPoint(segments[i]->position.x, segments[i]->position.y);
+		SDL_SetRenderDrawColor(renderer, r>>8, g>>8, b>>8, a>>8);
+		SDL_RenderLine(renderer, prevPt.x, prevPt.y, pt.x, pt.y);
+		prevPt = pt;
 	}
 	for (; i < numSegments; i++)
 	{
 		a -= da;
-		glColor4ub(0, 0, 0, a>>8);
-		glVertex2f(segments[i]->position.x, segments[i]->position.y);
+		glm::vec4 pt = core->transform.transformPoint(segments[i]->position.x, segments[i]->position.y);
+		SDL_SetRenderDrawColor(renderer, 0, 0, 0, a>>8);
+		SDL_RenderLine(renderer, prevPt.x, prevPt.y, pt.x, pt.y);
+		prevPt = pt;
 	}
-	glEnd();
 }

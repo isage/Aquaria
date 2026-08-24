@@ -11,16 +11,6 @@
 #include "ByteBuffer.h"
 using namespace std;
 
-
-#ifdef _WIN32 /* Stupid Windows needs to include windows.h before gl.h */
-#undef FAR
-#define WIN32_LEAN_AND_MEAN
-#define NOMINMAX
-#include <windows.h>
-#undef GetCharWidth
-#endif
-#include "gl.h"
-
 //glFont header
 #include "glfont2.h"
 using namespace glfont;
@@ -32,6 +22,7 @@ GLFont::GLFont ()
 {
 	//Initialize header to safe state
 	header.tex = -1;
+	header.sdlTex = NULL;
 	header.tex_width = 0;
 	header.tex_height = 0;
 	header.start_char = 0;
@@ -101,32 +92,44 @@ bool GLFont::Create (const char *file_name, int tex, bool loadTexture)
 	// HACK: Aquaria uses override textures, so we can live with the truncation.
 	bb.read(tex_bytes, std::min(num_tex_bytes, bb.readable()));
 
-	//Build2DMipmaps(3, header.tex_width, header.tex_height, GL_UNSIGNED_BYTE, tex_bytes, 1);
-
 	if (loadTexture)
 	{
-		glBindTexture(GL_TEXTURE_2D, tex);  
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+		// The embedded pixel data is 2-channel luminance-alpha, not a
+		// standard image container SDL3_image can decode - expand it to
+		// RGBA (R=G=B=luminance) and build an SDL_Texture directly from
+		// the raw pixels, same technique as ImageLoader.cpp uses for
+		// decoded images.
+		unsigned int numPixels = header.tex_width * header.tex_height;
+		unsigned char *rgba = new unsigned char[(size_t)numPixels * 4];
+		const unsigned char *la = (const unsigned char*)tex_bytes;
+		for (unsigned int i = 0; i < numPixels; i++)
+		{
+			unsigned char lum = la[i*2 + 0];
+			unsigned char alpha = la[i*2 + 1];
+			rgba[i*4 + 0] = lum;
+			rgba[i*4 + 1] = lum;
+			rgba[i*4 + 2] = lum;
+			rgba[i*4 + 3] = alpha;
+		}
 
-		//glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_MODULATE);
-		glTexImage2D(GL_TEXTURE_2D, 0, 2, header.tex_width,
-			header.tex_height, 0, GL_LUMINANCE_ALPHA, GL_UNSIGNED_BYTE,
-			(void *)tex_bytes);
-		//gluBuild2DMipmaps(GL_TEXTURE_2D, 2, header.tex_width, header.tex_height, GL_LUMINANCE_ALPHA, GL_UNSIGNED_BYTE, (void*)tex_bytes);
-		//Build2DMipmaps(3, header.tex_width, header.tex_height, GL_LUMINANCE_ALPHA, tex_bytes, 1);
-		//Create OpenGL texture
-		/*
-		glBindTexture(GL_TEXTURE_2D, tex);  
-		glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
-		glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);
-		glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-		glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-		//glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_MODULATE);
+		SDL_Renderer *renderer = core ? core->getRenderer() : 0;
+		if (renderer)
+		{
+			SDL_Surface *surf = SDL_CreateSurfaceFrom((int)header.tex_width, (int)header.tex_height,
+				SDL_PIXELFORMAT_RGBA32, rgba, (int)header.tex_width * 4);
+			if (surf)
+			{
+				header.sdlTex = SDL_CreateTextureFromSurface(renderer, surf);
+				SDL_DestroySurface(surf);
+				if (header.sdlTex)
+				{
+					SDL_SetTextureScaleMode(header.sdlTex, SDL_SCALEMODE_LINEAR);
+					SDL_SetTextureBlendMode(header.sdlTex, SDL_BLENDMODE_BLEND);
+				}
+			}
+		}
 
-		*/
+		delete [] rgba;
 	}
 
 	//Free texture pixels memory
@@ -148,6 +151,11 @@ void GLFont::Destroy (void)
 	{
 		delete[] header.chars;
 		header.chars = NULL;
+	}
+	if (header.sdlTex)
+	{
+		SDL_DestroyTexture(header.sdlTex);
+		header.sdlTex = NULL;
 	}
 }
 //*******************************************************************
@@ -251,9 +259,8 @@ int GLFont::GetCharHeight (unsigned char c)
 //*******************************************************************
 void GLFont::Begin (void)
 {
-	//Bind to font texture
-	glBindTexture(GL_TEXTURE_2D, header.tex);
 }
+
 //*******************************************************************
 void GLFont::GetStringSize (const std::string &text, std::pair<int, int> *size)
 {

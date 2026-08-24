@@ -49,12 +49,11 @@ public:
 
 	int width, height;
 
-	static bool useMipMaps;
 	bool repeat, repeating;
 
-	static GLint filter;
-	static GLint format;
-	GLuint textures[1];
+	static SDL_ScaleMode filter;
+
+	SDL_Texture *sdlTexture;
 
 	void reload();
 
@@ -73,6 +72,13 @@ protected:
 	bool loadTGA(const std::string &file);
 	bool loadZGA(const std::string &file);
 	bool loadGeneric(const std::string &file, const char *typeHint);
+
+	// CPU-side shadow copy of the texture's current RGBA pixels, needed
+	// because SDL's 2D renderer has no "read pixels back out of an
+	// arbitrary texture" call (only SDL_RenderReadPixels against the
+	// active render target). Kept in sync by write()/loadGeneric(); read()
+	// serves from this instead of a GPU round-trip.
+	unsigned char *shadowData;
 
 	int ow, oh;
 	

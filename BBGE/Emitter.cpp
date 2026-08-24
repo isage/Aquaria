@@ -19,6 +19,7 @@ along with this program; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 */
 #include "Particles.h"
+#include <vector>
 
 Emitter::Emitter(ParticleEffect *pe) : Quad(), pe(pe)
 {
@@ -257,18 +258,7 @@ void Emitter::onRender()
 
 	if (!data.spawnLocal)
 	{
-		glLoadIdentity();
-		/*
-		if (pe && pe->followCamera)
-		{
-			glLoadIdentity();
-			glScalef(core->globalResolutionScale.x, core->globalResolutionScale.y,0);
-		}
-		else
-		{
-			core->setupRenderPositionAndScale();
-		}
-		*/
+		core->loadBaseTransform();
 		core->setupRenderPositionAndScale();
 	}
 
@@ -278,12 +268,20 @@ void Emitter::onRender()
 	if (texture)
 		texture->apply();
 
-
+	SDL_Renderer *renderer = core->getRenderer();
+	if (!renderer) return;
+	SDL_Texture *tex = texture ? texture->sdlTexture : 0;
 
 	if (hasRot)
 	{
 		Vector colorMult = data.inheritColor ? pe->color : Vector(1, 1, 1);
 		float alphaMult = data.inheritAlpha ? pe->alpha.x : 1;
+
+		std::vector<SDL_Vertex> verts;
+		std::vector<int> indices;
+		verts.reserve(particles.size()*4);
+		indices.reserve(particles.size()*6);
+
 		for (Particles::iterator i = particles.begin(); i != particles.end(); i++)
 		{
 			Particle *p = *i;
@@ -293,71 +291,60 @@ void Emitter::onRender()
 				const float dy = h2 * p->scale.y;
 
 				Vector col = p->color * colorMult;
-				glColor4f(col.x, col.y, col.z, p->alpha.x * alphaMult);
+				SDL_FColor sdlCol = {col.x, col.y, col.z, p->alpha.x * alphaMult};
 
-				
+				glm::vec4 c0, c1, c2, c3;
 				if (p->rot.z != 0 || p->rot.isInterpolating())
 				{
-					glPushMatrix();
-						
-						glTranslatef(p->pos.x, p->pos.y,0);
-
-						glRotatef(p->rot.z, 0, 0, 1);
-
-						if (data.flipH || (data.copyParentFlip && (pe->isfh() || (pe->getParent() && pe->getParent()->isfh()))))
-						{
-							//glDisable(GL_CULL_FACE);
-							glRotatef(180, 0, 1, 0);
-						}
-
-						/*
-						if (data.flipV || (data.copyParentFlip && (this->isfv() || (parent && parent->isfv()))))
-						{
-							glDisable(GL_CULL_FACE);
-						}
-						*/
-						
-						glBegin(GL_QUADS);
-							glTexCoord2f(0,1);
-							glVertex2f(-dx, +dy);
-
-							glTexCoord2f(1,1);
-							glVertex2f(+dx, +dy);
-
-							glTexCoord2f(1,0);
-							glVertex2f(+dx, -dy);
-						
-							glTexCoord2f(0,0);
-							glVertex2f(-dx, -dy);
-						glEnd();
-
-					glPopMatrix();
+					core->transform.pushMatrix();
+					core->transform.translate(p->pos.x, p->pos.y, 0);
+					core->transform.rotate(p->rot.z, 0, 0, 1);
+					if (data.flipH || (data.copyParentFlip && (pe->isfh() || (pe->getParent() && pe->getParent()->isfh()))))
+					{
+						core->transform.rotate(180, 0, 1, 0);
+					}
+					c0 = core->transform.transformPoint(-dx, +dy);
+					c1 = core->transform.transformPoint(+dx, +dy);
+					c2 = core->transform.transformPoint(+dx, -dy);
+					c3 = core->transform.transformPoint(-dx, -dy);
+					core->transform.popMatrix();
 				}
 				else
 				{
 					const float x = p->pos.x;
 					const float y = p->pos.y;
-
-					glBegin(GL_QUADS);
-						glTexCoord2f(0,1);
-						glVertex2f(x-dx, y+dy);
-
-						glTexCoord2f(1,1);
-						glVertex2f(x+dx, y+dy);
-
-						glTexCoord2f(1,0);
-						glVertex2f(x+dx, y-dy);
-					
-						glTexCoord2f(0,0);
-						glVertex2f(x-dx, y-dy);
-					glEnd();
+					c0 = core->transform.transformPoint(x-dx, y+dy);
+					c1 = core->transform.transformPoint(x+dx, y+dy);
+					c2 = core->transform.transformPoint(x+dx, y-dy);
+					c3 = core->transform.transformPoint(x-dx, y-dy);
 				}
+
+				int base = (int)verts.size();
+				SDL_Vertex v;
+				v.color = sdlCol;
+				v.position={c0.x,c0.y}; v.tex_coord={0,1}; verts.push_back(v);
+				v.position={c1.x,c1.y}; v.tex_coord={1,1}; verts.push_back(v);
+				v.position={c2.x,c2.y}; v.tex_coord={1,0}; verts.push_back(v);
+				v.position={c3.x,c3.y}; v.tex_coord={0,0}; verts.push_back(v);
+				indices.push_back(base+0); indices.push_back(base+1); indices.push_back(base+2);
+				indices.push_back(base+0); indices.push_back(base+2); indices.push_back(base+3);
 			}
+		}
+
+		if (!verts.empty())
+		{
+			if (tex) SDL_SetTextureBlendMode(tex, currentBlendMode);
+			else SDL_SetRenderDrawBlendMode(renderer, currentBlendMode);
+			SDL_RenderGeometry(renderer, tex, verts.data(), (int)verts.size(), indices.data(), (int)indices.size());
 		}
 	}
 	else
 	{
-		glBegin(GL_QUADS);
+		std::vector<SDL_Vertex> verts;
+		std::vector<int> indices;
+		verts.reserve(particles.size()*4);
+		indices.reserve(particles.size()*6);
+
 		for (Particles::iterator i = particles.begin(); i != particles.end(); i++)
 		{
 			Particle *p = *i;
@@ -368,43 +355,30 @@ void Emitter::onRender()
 				const float dx = w2 * p->scale.x;
 				const float dy = h2 * p->scale.y;
 
-				glColor4f(p->color.x, p->color.y, p->color.z, p->alpha.x);
-	
-				glTexCoord2f(0,1);
-				glVertex2f(x-dx, y+dy);
+				SDL_FColor sdlCol = {p->color.x, p->color.y, p->color.z, p->alpha.x};
 
-				glTexCoord2f(1,1);
-				glVertex2f(x+dx, y+dy);
+				glm::vec4 c0 = core->transform.transformPoint(x-dx, y+dy);
+				glm::vec4 c1 = core->transform.transformPoint(x+dx, y+dy);
+				glm::vec4 c2 = core->transform.transformPoint(x+dx, y-dy);
+				glm::vec4 c3 = core->transform.transformPoint(x-dx, y-dy);
 
-				glTexCoord2f(1,0);
-				glVertex2f(x+dx, y-dy);
-			
-				glTexCoord2f(0,0);
-				glVertex2f(x-dx, y-dy);
+				int base = (int)verts.size();
+				SDL_Vertex v;
+				v.color = sdlCol;
+				v.position={c0.x,c0.y}; v.tex_coord={0,1}; verts.push_back(v);
+				v.position={c1.x,c1.y}; v.tex_coord={1,1}; verts.push_back(v);
+				v.position={c2.x,c2.y}; v.tex_coord={1,0}; verts.push_back(v);
+				v.position={c3.x,c3.y}; v.tex_coord={0,0}; verts.push_back(v);
+				indices.push_back(base+0); indices.push_back(base+1); indices.push_back(base+2);
+				indices.push_back(base+0); indices.push_back(base+2); indices.push_back(base+3);
 			}
 		}
-		glEnd();
-	}
 
-
-
-	/*
-	glDisable(GL_TEXTURE_2D);
-	glPointSize(4);
-	glBegin(GL_POINTS);
-	
-	for (Particles::iterator i = particles.begin(); i != particles.end(); i++)
-	{
-		Particle *p = *i;
-		if (p->active)
+		if (!verts.empty())
 		{
-			glColor4f(1, 0, 0, 1);
-			x = p->pos.x;
-			y = p->pos.y;
-			glVertex2f(x, y);
+			if (tex) SDL_SetTextureBlendMode(tex, currentBlendMode);
+			else SDL_SetRenderDrawBlendMode(renderer, currentBlendMode);
+			SDL_RenderGeometry(renderer, tex, verts.data(), (int)verts.size(), indices.data(), (int)indices.size());
 		}
 	}
-	glEnd();
-	glEnable(GL_TEXTURE_2D);
-	*/
 }

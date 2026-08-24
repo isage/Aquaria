@@ -22,6 +22,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 #include "Hair.h"
 #include "DSQ.h"
+#include <vector>
 
 // nodes = 40
 // segmentLength = 3
@@ -125,16 +126,23 @@ HairNode *Hair::getHairNode(int idx)
 
 void Hair::onRender()
 {
-	//glDisable(GL_CULL_FACE);
+	SDL_Renderer *renderer = core->getRenderer();
+	if (!renderer || hairNodes.size() < 2) return;
+	SDL_Texture *tex = texture ? texture->sdlTexture : 0;
 
-	glBegin(GL_QUAD_STRIP);
 	float texBits = 1.0f / (hairNodes.size()-1);
-	//float height2 = 2.5f;
 	Vector pl, pr;
+
+	// GL_QUAD_STRIP (2 verts per hair node) -> triangle list.
+	std::vector<SDL_Vertex> verts;
+	std::vector<int> indices;
+	verts.reserve(hairNodes.size()*2);
+	indices.reserve((hairNodes.size()-1)*6);
+
+	SDL_FColor col = {effectiveColor.x, effectiveColor.y, effectiveColor.z, effectiveAlpha};
+
 	for (int i = 0; i < hairNodes.size(); i++)
 	{
-		//glNormal3f( 0.0f, 0.0f, 1.0f);
-
 		if (i != hairNodes.size()-1)
 		{
 			Vector diffVec = hairNodes[i+1].position - hairNodes[i].position;
@@ -143,51 +151,28 @@ void Hair::onRender()
 			pr = diffVec.getPerpendicularRight();
 		}
 
-		/*
-		if (hairNodes[i].problem)
+		glm::vec4 wl = core->transform.transformPoint(hairNodes[i].position.x + pl.x, hairNodes[i].position.y + pl.y);
+		glm::vec4 wr = core->transform.transformPoint(hairNodes[i].position.x + pr.x, hairNodes[i].position.y + pr.y);
+
+		SDL_Vertex v;
+		v.color = col;
+		v.position = {wl.x, wl.y}; v.tex_coord = {0, texBits*i}; verts.push_back(v);
+		v.position = {wr.x, wr.y}; v.tex_coord = {1, texBits*i}; verts.push_back(v);
+
+		if (i > 0)
 		{
-			glColor3f(1,0,0);
+			int base = (i-1)*2;
+			indices.push_back(base+0); indices.push_back(base+1); indices.push_back(base+3);
+			indices.push_back(base+0); indices.push_back(base+3); indices.push_back(base+2);
 		}
-		else
-			glColor3f(1,1,1);
-		*/
-
-
-		glTexCoord2f(0, texBits*i);
-		glVertex3f(hairNodes[i].position.x + pl.x,  hairNodes[i].position.y + pl.y, 0);
-		glTexCoord2f(1, texBits*i);
-		glVertex3f( hairNodes[i].position.x + pr.x,  hairNodes[i].position.y + pr.y, 0);
-
-		//float angle = 0;
-		/*
-		float angle = 0;
-		if (i < hairNodes.size()-1)
-		{
-			MathFunctions::calculateAngleBetweenVectorsInDegrees(hairNodes[i+1].position, hairNodes[i].position, angle);
-			angle += 90;
-			angle = (angle*PI)/180.0f;
-		}
-		*/
-		/*
-		glTexCoord2f(0, 1-texBits*i);
-		glVertex3f(hairNodes[i].position.x -sinf(angle)*hairWidth,  hairNodes[i].position.y + cosf(angle)*height2, 0);
-		glTexCoord2f(1, 1-texBits*i);
-		glVertex3f( hairNodes[i].position.x + sinf(angle)*hairWidth,  hairNodes[i].position.y + cosf(angle)*height2,  0);
-		*/
 	}
-	glEnd();
 
-	/*
-	glColor3f(1,1,1);
-	for (int i = 0; i < hairNodes.size(); i++)
+	if (!verts.empty())
 	{
-		std::ostringstream os;
-		os << hairNodes[i].angleDiff;
-		core->print(hairNodes[i].position.x, hairNodes[i].position.y, os.str().c_str(), 6);
+		if (tex) SDL_SetTextureBlendMode(tex, currentBlendMode);
+		else SDL_SetRenderDrawBlendMode(renderer, currentBlendMode);
+		SDL_RenderGeometry(renderer, tex, verts.data(), (int)verts.size(), indices.data(), (int)indices.size());
 	}
-
-	*/
-	//glEnable(GL_CULL_FACE);
 }
 
 void Hair::onUpdate(float dt)

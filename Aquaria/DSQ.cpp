@@ -999,13 +999,6 @@ This build is not yet final, and as such there are a couple things lacking. They
 		maxPages = 600/saveSlotPageSize;
 	}
 
-	if (mipmapsEnabled)
-		debugLog("Mipmaps Enabled");
-	else
-		debugLog("Mipmaps Disabled");
-
-	Texture::useMipMaps = mipmapsEnabled;
-
 	if (isDeveloperKeys())
 		debugLog("DeveloperKeys Enabled");
 	else
@@ -1755,11 +1748,11 @@ void DSQ::setFilter(int ds)
 	dsq_filter = ds;
 	if (dsq_filter == 0)
 	{
-		Texture::filter = GL_LINEAR;
+		Texture::filter = SDL_SCALEMODE_LINEAR;
 	}
 	else if (dsq_filter == 2)
 	{
-		Texture::filter = GL_NEAREST;
+		Texture::filter = SDL_SCALEMODE_NEAREST;
 	}
 }
 
@@ -3208,12 +3201,9 @@ void DSQ::doSaveSlotMenu(SaveSlotMode ssm, const Vector &position)
 		int x = renderWidth/2  - scrShotWidth/2;
 		int y = renderHeight/2 - scrShotHeight/2;
 
-		glPushAttrib(GL_VIEWPORT_BIT);
-		glViewport(0, 0, renderWidth, renderHeight);
 		clearBuffers();
 		render();
 		scrShotData = core->grabScreenshot(x, y, scrShotWidth, scrShotHeight);
-		glPopAttrib();
 		showBuffer();
 
 		prepScreen(0);
@@ -4948,14 +4938,16 @@ void AquariaScreenTransition::capture()
 	this->alpha = 0;
 	InterpolatedVector oldAlpha = dsq->cursor->alpha;
 	dsq->cursor->alpha.x = 0;
-	int width=0, height=0;
+
+	// Render once with the cursor hidden, snapshot that clean frame into
+	// captureBuffer (what the transition fades from), then render again
+	// normally (cursor visible) for what actually gets presented.
 	core->render();
 
-	width = core->getWindowWidth();
-	height = core->getWindowHeight();
-
-	glBindTexture(GL_TEXTURE_2D,screen_texture);
-	glCopyTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, 0, 0, width, height);
+	if (captureBuffer.isInited() && core->frameBuffer.isInited())
+	{
+		captureBuffer.copyFrom(core->frameBuffer);
+	}
 
 	dsq->cursor->alpha = oldAlpha;
 	core->render();

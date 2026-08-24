@@ -278,45 +278,31 @@ void AutoMap::onRender()
 //	if (!doRender) return;
 	if (alpha.x == 0) return;
 
-	glBindTexture(GL_TEXTURE_2D, 0);
+	SDL_Renderer *renderer = core->getRenderer();
+	if (!renderer) return;
+
 	RenderObject::lastTextureApplied = 0;
 	float alphaValue = alpha.x;
-	
-	
-
-	//int sz2 = 80;//80;
 
 	int ysz = dsq->game->cameraMax.y/TILE_SIZE;
 	int xsz = dsq->game->cameraMax.x/TILE_SIZE;
 
-	//TileVector t(dsq->game->avatar->position);
 	TileVector t(Vector(dsq->game->cameraMax.x/2, dsq->game->cameraMax.y/2));
 
-
-
 	int skip = 4;
-	glLineWidth(skip);
-	
+
 	if (alphaValue > 0)
 	{
-		/*
-		if (core->getWindowHeight() == 600)
-		{
-			skip = 2;
-		}
-		*/
+		SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_BLEND);
 
-		//for (int y = t.y-sz2; y < t.y+sz2; y+=skip)
 		for (int y = 0; y < ysz; y += skip)
 		{
 			float f = float(y)/float(ysz);
 			f = 0.8f-(f*0.5f);
-			glColor4f(0.5f*f, 0.75f*f, 1*f, alphaValue);
+			SDL_SetRenderDrawColorFloat(renderer, 0.5f*f, 0.75f*f, 1*f, alphaValue);
 
-			glBegin(GL_LINES);
 			int rowStart = -1;
 			int x = 0;
-			//for (x = t.x-sz2; x < t.x+sz2; x++)
 			for (x = 0; x < xsz; x++)
 			{
 				if (dsq->game->getGrid(TileVector(x,y))!=OT_BLACK)
@@ -330,72 +316,31 @@ void AutoMap::onRender()
 				{
 					if (rowStart != -1)
 					{
-						glVertex3f((rowStart-t.x), (y-t.y),0);
-						glVertex3f((x-t.x), (y-t.y),0);
+						glm::vec4 p0 = core->transform.transformPoint(rowStart-t.x, y-t.y);
+						glm::vec4 p1 = core->transform.transformPoint(x-t.x, y-t.y);
+						SDL_FPoint pts[2] = {{p0.x,p0.y},{p1.x,p1.y}};
+						SDL_RenderLines(renderer, pts, 2);
 						rowStart = -1;
 					}
 				}
 			}
 			if (rowStart != -1)
 			{
-				glVertex3f((rowStart-t.x), (y-t.y),0);
-				glVertex3f((x-t.x), (y-t.y),0);
-			}
-			glEnd();
-		}
-
-		/*
-		glColor4f(0,0,0,alphaValue);
-		glPointSize(8);
-		//shadowTex->apply();
-		glEnable(GL_TEXTURE_2D);
-		glBegin(GL_QUADS);
-		int rx=0,ry=0;
-		int sz = (AUTOMAP_GRIDTILE/TILE_SIZE)*0.5f;
-		for (int x = 0; x < MAX_AUTOMAP_GRID; x++)
-		{
-			for (int y = 0; y < MAX_AUTOMAP_GRID; y++)
-			{
-				if (grid[x][y])
-				{
-					rx = float(x * AUTOMAP_GRIDTILE)/float(TILE_SIZE) + TILE_SIZE/2 - t.x;
-					ry = float(y * AUTOMAP_GRIDTILE)/float(TILE_SIZE) + TILE_SIZE/2 - t.y;
-					//glVertex2f(rx, ry);
-
-					glTexCoord2f(0, 1.0);
-					glVertex3f(rx-sz, ry+sz,  0.0f);
-
-					glTexCoord2f(0, 1.0);
-					glVertex3f(rx+sz, ry+sz,  0.0f);
-
-					glTexCoord2f(1, 0);
-					glVertex3f(rx+sz,  ry-sz,  0.0f);
-
-					glTexCoord2f(1, 0);
-					glVertex3f(rx-sz,  ry-sz,  0.0f);
-				}
+				glm::vec4 p0 = core->transform.transformPoint(rowStart-t.x, y-t.y);
+				glm::vec4 p1 = core->transform.transformPoint(x-t.x, y-t.y);
+				SDL_FPoint pts[2] = {{p0.x,p0.y},{p1.x,p1.y}};
+				SDL_RenderLines(renderer, pts, 2);
 			}
 		}
-		glEnd();
-		*/
-		/*
-		shadowTex->unbind();
-		glDisable(GL_TEXTURE_2D);
-		*/
-		//glDisable(GL_TEXTURE_2D);
 	}
 
 	TileVector nt(dsq->game->avatar->position);
 
-	glTranslatef(nt.x - t.x, nt.y - t.y,0);
-	glColor4f(0.5,0.7,1, alphaValue);
-	glPointSize(4);
+	core->transform.pushMatrix();
+	core->transform.translate(nt.x - t.x, nt.y - t.y, 0);
 
-	glBegin(GL_POINTS);
-		glVertex2f(0,0);
-	glEnd();
+	drawCircle(blip.x*16, 8, 0.5f, 0.75f, 1.0f, alphaValue*0.5f);
 
-	glColor4f(0.5,0.75,1, alphaValue*0.5f);
-	drawCircle(blip.x*16, 8);
+	core->transform.popMatrix();
 }
 

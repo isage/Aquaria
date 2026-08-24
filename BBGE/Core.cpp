@@ -22,6 +22,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "Texture.h"
 #include "AfterEffect.h"
 #include "Particles.h"
+#include "TTFFont.h"
 
 #include <time.h>
 #include <iostream>
@@ -45,7 +46,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #endif
 
 static SDL_Window *gScreen=0;
-static SDL_GLContext gGLctx=0;
+static SDL_Renderer *gRenderer=0;
 
 bool ignoreNextMouse=false;
 Vector unchange;
@@ -210,32 +211,19 @@ RenderObjectLayer *Core::getRenderObjectLayer(int i)
 	return &renderObjectLayers[i];
 }
 
-
-
-
-void Core::setColor(float r, float g, float b, float a)
-{
-	glColor4f(r, g, b, a);
-}
-
-void Core::bindTexture(int stage, unsigned int handle)
-{
-	//glBindTexture(GL_TEXTURE_2D, handle);
-}
-
 void Core::translateMatrixStack(float x, float y, float z)
 {
-	glTranslatef(x, y, z);
+	core->transform.translate(x, y, z);
 }
 
 void Core::scaleMatrixStack(float x, float y, float z)
 {
-	glScalef(x, y, z);
+	core->transform.scale(x, y, z);
 }
 
 void Core::rotateMatrixStack(float x, float y, float z)
 {
-	glRotatef(0, 0, 1, z);
+	core->transform.rotate(0, 0, 1, z);
 }
 
 void Core::applyMatrixStackToWorld()
@@ -244,7 +232,7 @@ void Core::applyMatrixStackToWorld()
 
 void Core::rotateMatrixStack(float z)
 {
-	glRotatef(0, 0, 1, z);
+	core->transform.rotate(0, 0, 1, z);
 }
 
 bool Core::getShiftState()
@@ -669,8 +657,8 @@ void Core::setInputGrab(bool on)
 {
 	if (isWindowFocus())
 	{
-		SDL_SetWindowMouseGrab(gScreen, on ? true : false);
-		SDL_SetWindowKeyboardGrab(gScreen, on ? true : false);
+//		SDL_SetWindowMouseGrab(gScreen, on ? true : false);
+//		SDL_SetWindowKeyboardGrab(gScreen, on ? true : false);
 	}
 }
 
@@ -942,64 +930,9 @@ Vector Core::getClearColor()
 void Core::setClearColor(const Vector &c)
 {
 	clearColor = c;
-
-	glClearColor(c.x, c.y, c.z, 0.0);
 }
-
-void Core::setSDLGLAttributes()
-{
-	std::ostringstream os;
-	os << "setting vsync: " << _vsync;
-	debugLog(os.str());
-//    SDL_GL_SetSwapInterval(_vsync);
-    SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
-}
-
-
-#ifdef GLAPIENTRY
-#undef GLAPIENTRY
-#endif
-
-#ifdef BBGE_BUILD_WINDOWS
-#define GLAPIENTRY APIENTRY
-#else
-#define GLAPIENTRY
-#endif
 
 unsigned int Core::dbg_numRenderCalls = 0;
-
-#ifdef BBGE_BUILD_OPENGL_DYNAMIC
-#define GL_FUNC(ret,fn,params,call,rt) \
-    extern "C" { \
-        static ret (GLAPIENTRY *p##fn) params = NULL; \
-        ret GLAPIENTRY fn params { ++Core::dbg_numRenderCalls; rt p##fn call; } \
-    }
-#include "OpenGLStubs.h"
-#undef GL_FUNC
-
-static bool lookup_glsym(const char *funcname, void **func)
-{
-	*func = (void*)SDL_GL_GetProcAddress(funcname);
-	if (*func == NULL)
-	{
-		std::ostringstream os;
-		os << "Failed to find OpenGL symbol \"" << funcname << "\"\n";
-		errorLog(os.str());
-		return false;
-	}
-	return true;
-}
-
-static bool lookup_all_glsyms(void)
-{
-	bool retval = true;
-	#define GL_FUNC(ret,fn,params,call,rt) \
-		if (!lookup_glsym(#fn, (void **) &p##fn)) retval = false;
-	#include "OpenGLStubs.h"
-	#undef GL_FUNC
-	return retval;
-}
-#endif
 
 
 bool Core::initGraphicsLibrary(int width, int height, bool fullscreen, int vsync, int bpp, bool recreate)
@@ -1024,23 +957,12 @@ bool Core::initGraphicsLibrary(int width, int height, bool fullscreen, int vsync
 	//setenv("SDL_VIDEO_CENTERED", "1", 1);
 	//SDL_putenv("SDL_VIDEO_WINDOW_POS=400,300");
 
-	//SDL_putenv((char *) "LIBGL_DEBUG=verbose"); // temp, to track errors on linux with nouveau drivers.
-
 	if (recreate)
 	{
 		if (!SDL_InitSubSystem(SDL_INIT_VIDEO))
 		{
 			exit_error(std::string("SDL Error: ") + std::string(SDL_GetError()));
 		}
-
-#if BBGE_BUILD_OPENGL_DYNAMIC
-		if (!SDL_GL_LoadLibrary(NULL))
-		{
-			std::string err = std::string("SDL_GL_LoadLibrary Error: ") + std::string(SDL_GetError());
-			SDL_Quit();
-			exit_error(err);
-		}
-#endif
 	}
 
 	setWindowCaption(appName, appName);
@@ -1048,12 +970,9 @@ bool Core::initGraphicsLibrary(int width, int height, bool fullscreen, int vsync
 	initIcon();
     // Create window
 
-	setSDLGLAttributes();
-
 	//if (!didOnce)
 	{
-		Uint32 flags = 0;
-		flags = SDL_WINDOW_OPENGL;
+		Uint64 flags = 0;
 		if (fullscreen)
 			flags |= SDL_WINDOW_FULLSCREEN;
 		gScreen = SDL_CreateWindow(appName.c_str(), width, height, flags);
@@ -1066,42 +985,36 @@ bool Core::initGraphicsLibrary(int width, int height, bool fullscreen, int vsync
 			exit(0);
 		}
 		SDL_SetWindowPosition(gScreen, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED);
-		gGLctx = SDL_GL_CreateContext(gScreen);
-		if (gGLctx == NULL)
+
+		gRenderer = SDL_CreateRenderer(gScreen, NULL);
+		if (gRenderer == NULL)
 		{
 			std::ostringstream os;
-			os << "Couldn't create OpenGL context!\n" << SDL_GetError();
+			os << "Couldn't create SDL renderer!\n" << SDL_GetError();
 			errorLog(os.str());
 			SDL_Quit();
 			exit(0);
 		}
 
-#if BBGE_BUILD_OPENGL_DYNAMIC
-		if (!lookup_all_glsyms())
+		if (!TTF_Init())
 		{
 			std::ostringstream os;
-			os << "Couldn't load OpenGL symbols we need\n";
-			SDL_Quit();
-			exit_error(os.str());
+			os << "Couldn't init SDL_ttf!\n" << SDL_GetError();
+			errorLog(os.str());
 		}
-#endif
 	}
 
 	setWindowCaption(appName, appName);
 
-	glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
-	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-	SDL_GL_SwapWindow(gScreen);
-	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-	SDL_GL_SwapWindow(gScreen);
-	if ((_vsync != 1) || (!SDL_GL_SetSwapInterval(-1)))
-		SDL_GL_SetSwapInterval(_vsync);
+	SDL_SetRenderDrawColor(gRenderer, 0, 0, 0, 255);
+	SDL_RenderClear(gRenderer);
+	SDL_RenderPresent(gRenderer);
+	SDL_SetRenderDrawColor(gRenderer, 0, 0, 0, 255);
+	SDL_RenderClear(gRenderer);
+	SDL_RenderPresent(gRenderer);
 	const char *name = SDL_GetCurrentVideoDriver();
-	SDL_SetWindowMouseGrab(gScreen, true);
-	SDL_SetWindowKeyboardGrab(gScreen, true);
-
-	glViewport(0, 0, width, height);
-	glScissor(0, 0, width, height);
+//	SDL_SetWindowMouseGrab(gScreen, true);
+//	SDL_SetWindowKeyboardGrab(gScreen, true);
 
 	std::ostringstream os2;
 	os2 << "Video Driver Name [" << name << "]";
@@ -1115,18 +1028,7 @@ bool Core::initGraphicsLibrary(int width, int height, bool fullscreen, int vsync
 		keys[i] = 0;
 	}
 
-
-	glEnable(GL_TEXTURE_2D);							// Enable Texture Mapping
-	glClearColor(0.0f, 0.0f, 0.0f, 0.0f);				// Black Background
-	glClearDepth(1.0);								// Depth Buffer Setup
-	glDisable(GL_CULL_FACE);
-	
-	//glHint(GL_PERSPECTIVE_CORRECTION_HINT, GL_NICEST);
-	//glHint(GL_PERSPECTIVE_CORRECTION_HINT, GL_NICEST);
-
-	glLoadIdentity();
-	
-	glFinish();
+	core->loadBaseTransform();
 
 	setClearColor(clearColor);
 	
@@ -1173,28 +1075,19 @@ void Core::shutdownSoundLibrary()
 
 void Core::shutdownGraphicsLibrary(bool killVideo)
 {
-	glFinish();
 	if (killVideo) {
 		SDL_SetWindowMouseGrab(gScreen, false);
 		SDL_SetWindowKeyboardGrab(gScreen, false);
-		SDL_GL_MakeCurrent(gScreen, NULL);
-		SDL_GL_DestroyContext(gGLctx);
+		ttfShutdown();
+		if (gRenderer)
+		{
+			SDL_DestroyRenderer(gRenderer);
+			gRenderer = 0;
+		}
 		SDL_DestroyWindow(gScreen);
-		gGLctx = 0;
 		SDL_QuitSubSystem(SDL_INIT_VIDEO);
 
-		FrameBuffer::resetOpenGL();
-
 		gScreen = 0;
-
-#if BBGE_BUILD_OPENGL_DYNAMIC
-		// reset all the entry points to NULL, so we know exactly what happened
-		//  if we call a GL function after shutdown.
-		#define GL_FUNC(ret,fn,params,call,rt) \
-			p##fn = NULL;
-		#include "OpenGLStubs.h"
-		#undef GL_FUNC
-#endif
 	}
 
 	_hasFocus = false;
@@ -1250,19 +1143,6 @@ void centerWindow(HWND hwnd)
 }
 #endif
 
-/*
-void Core::adjustWindowPosition(int x, int y)
-{
-#ifdef BBGE_BUILD_WINDOWS
-	RECT rcWnd;
-	::GetWindowRect(hWnd, &rcWnd);
-	rcWnd.left += x;
-	rcWnd.top += y;
-	::SetWindowPos(hWnd, HWND_TOP, rcWnd.left, rcWnd.top, 0, 0, SWP_NOSIZE);
-#endif
-}
-*/
-
 bool Core::createWindow(int width, int height, int bits, bool fullscreen, std::string windowTitle)
 {
 	this->width = width;
@@ -1276,35 +1156,6 @@ bool Core::createWindow(int width, int height, int bits, bool fullscreen, std::s
 #ifndef M_PI
 #define M_PI           3.14159265358979323846
 #endif
-
-static void
-bbgePerspective(float fovy, float aspect, float zNear, float zFar)
-{
-    float sine, cotangent, deltaZ;
-    float radians = fovy / 2.0f * M_PI / 180.0f;
-
-    deltaZ = zFar - zNear;
-    sine = sinf(radians);
-    if ((deltaZ == 0.0f) || (sine == 0.0f) || (aspect == 0.0f)) {
-        return;
-    }
-    cotangent = cosf(radians) / sine;
-
-    GLfloat m[4][4] = {
-        { 1.0f, 0.0f, 0.0f, 0.0f },
-        { 0.0f, 1.0f, 0.0f, 0.0f },
-        { 0.0f, 0.0f, 1.0f, 0.0f },
-        { 0.0f, 0.0f, 0.0f, 1.0f }
-    };
-    m[0][0] = (GLfloat) (cotangent / aspect);
-    m[1][1] = (GLfloat) cotangent;
-    m[2][2] = (GLfloat) (-(zFar + zNear) / deltaZ);
-    m[2][3] = -1.0f;
-    m[3][2] = (GLfloat) (-2.0f * zNear * zFar / deltaZ);
-    m[3][3] = 0.0f;
-
-    glMultMatrixf(&m[0][0]);
-}
 
 void Core::setPixelScale(int pixelScaleX, int pixelScaleY)
 {
@@ -1365,41 +1216,12 @@ void Core::enable2DWide(int rx, int ry)
 	}
 }
 
-static void bbgeOrtho2D(float left, float right, float bottom, float top)
-{
-    glOrtho(left, right, bottom, top, -1.0, 1.0);
-}
-
 void Core::enable2D(int pixelScaleX, int pixelScaleY, bool forcePixelScale)
 {
-	// why do this again? don't really get it
-	/*
-	if (mode == MODE_2D)
-	{
-		if (forcePixelScale || (pixelScaleX!=0 && core->width!=pixelScaleX) || (pixelScaleY!=0 && core->height!=pixelScaleY))
-		{
-			float widthFactor = core->width/float(pixelScaleX);
-			float heightFactor = core->height/float(pixelScaleY);
-			core->globalResolutionScale = Vector(widthFactor,heightFactor,1.0f);
-			setPixelScale(pixelScaleX, pixelScaleY);
-
-			std::ostringstream os;
-			os << "top of call: ";
-			os << "widthFactor: " << widthFactor;
-			os << "heightFactor: " << heightFactor;
-			debugLog(os.str());
-		}
-		return;
-	}
-	*/
-	
-
-    GLint viewPort[4];
-    glGetIntegerv(GL_VIEWPORT, viewPort);
-
-    glMatrixMode(GL_PROJECTION);
-    //glPushMatrix();
-    glLoadIdentity();
+    int vpw = width, vph = height;
+    if (gScreen)
+        SDL_GetWindowSizeInPixels(gScreen, &vpw, &vph);
+    int viewPort[4] = { 0, 0, vpw, vph };
 
 	float vw=0,vh=0;
 
@@ -1422,86 +1244,16 @@ void Core::enable2D(int pixelScaleX, int pixelScaleY, bool forcePixelScale)
 
 
 
-	/*
-	vh = float(baseVirtualHeight * viewPort[2]) / float(baseVirtualWidth);
-
-	viewOffY = (viewPort[3] - vh) * 0.5f;
-	*/
-	
-
-	/*
-	std::ostringstream os;
-	os << "vw: " << vw << " OFFX: " << viewOffX << " ";
-	os << "vh: " << vh << " OFFY: " << viewOffY;
-	debugLog(os.str());
-	*/
-
-
-	/*
-	float aspect = float(width) / float (height);
-
-	if (aspect < 1.3f)
-	{
-		viewOffX *= 0.5f;
-	}
-	*/
-
-	
-//#else
-//	int offx=0,offy=0;
-//#endif
-
-	//+offx
-	//-offx
-	//glOrtho(0.0f,viewPort[2],viewPort[3],0.0f,-1000.0f,1000.0f);
-	//glOrtho(0.0f+offx,viewPort[2]+offx,viewPort[3]+offy,0.0f+offy,-1.0f,1.0f);
-	bbgeOrtho2D(0.0f-viewOffX,viewPort[2]-viewOffX,viewPort[3]-viewOffY,0.0f-viewOffY);
-	/*
-	static bool doOnce = false;
-	if (!doOnce)
-	{
-		glOrtho(0.0f,viewPort[2],viewPort[3],0.0f,-10.0f,10.0f);
-		doOnce = true;
-	}
-	*/
-	//glOrtho(-viewPort[2]/2,viewPort[2]/2,viewPort[3]/2,-viewPort[3]/2,-10.0f,10.0f);
-    //glOrtho(0, viewPort[2], 0, viewPort[3], -100, 100);
-
-    glMatrixMode(GL_MODELVIEW);
-    //glPushMatrix();
-    glLoadIdentity();
-
-	setupRenderPositionAndScale();
-
 	if (forcePixelScale || (pixelScaleX!=0 && core->width!=pixelScaleX) || (pixelScaleY!=0 && core->height!=pixelScaleY))
 	{
-		/*
-		float f = core->width/float(pixelScale);
-		core->globalResolutionScale = Vector(f,f,1.0f);
-		*/
-		//debugLog("HEEEREEE");
 		float widthFactor = core->width/float(pixelScaleX);
 		float heightFactor = core->height/float(pixelScaleY);
 		//float heightFactor = 
 		core->globalResolutionScale = Vector(widthFactor,heightFactor,1.0f);
 		setPixelScale(pixelScaleX, pixelScaleY);
 
-		//core->globalResolutionScale = Vector(1.5,1.5,1);
-		/*
-		std::ostringstream os;
-		os << "bottom of call: ";
-		os << "widthFactor: " << widthFactor;
-		os << " heightFactor: " << heightFactor;
-		debugLog(os.str());
-		*/
 	}
 	setPixelScale(pixelScaleX, pixelScaleY);
-
-	//core->globalResolutionScale.x = 1.6;
-
-	//setupRenderPositionAndScale();
-
-	
 }
 
 void Core::quitNestedMain()
@@ -1982,20 +1734,23 @@ void Core::clearBuffers()
 {
 	if (flags.get(CF_CLEARBUFFERS))
 	{
-		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);	// Clear The Screen And The Depth Buffer
+		if (gRenderer)
+		{
+			Uint8 r = (Uint8)(clearColor.x * 255);
+			Uint8 g = (Uint8)(clearColor.y * 255);
+			Uint8 b = (Uint8)(clearColor.z * 255);
+			SDL_SetRenderDrawColor(gRenderer, r, g, b, 255);
+			SDL_RenderClear(gRenderer);
+		}
 	}
 }
 
 void Core::setupRenderPositionAndScale()
 {
-	glScalef(globalScale.x*globalResolutionScale.x*screenCapScale.x, globalScale.y*globalResolutionScale.y*screenCapScale.y, globalScale.z*globalResolutionScale.z);
-	glTranslatef(-(cameraPos.x+cameraOffset.x), -(cameraPos.y+cameraOffset.y), -(cameraPos.z+cameraOffset.z));
+	core->transform.scale(globalScale.x*globalResolutionScale.x*screenCapScale.x, globalScale.y*globalResolutionScale.y*screenCapScale.y, globalScale.z*globalResolutionScale.z);
+	core->transform.translate(-(cameraPos.x+cameraOffset.x), -(cameraPos.y+cameraOffset.y), -(cameraPos.z+cameraOffset.z));
 }
 
-void Core::setupGlobalResolutionScale()
-{
-	glScalef(globalResolutionScale.x, globalResolutionScale.y, globalResolutionScale.z);
-}
 
 void Core::initFrameBuffer()
 {
@@ -2349,321 +2104,8 @@ void Core::pollEvents()
 
 void Core::print(int x, int y, const char *str, float sz)
 {
-	//Prof(Core_print);
-	/*
-	glLoadIdentity();
-	core->setupRenderPositionAndScale();
-	*/
-	///glPushAttrib(GL_ALL_ATTRIB_BITS);
-
-	glBindTexture(GL_TEXTURE_2D, 0);
-
-	glPushMatrix();
-	//sz *= 8;
-	//float osz = sz;
-	float xx = x;
-	float yy = y;
-	glTranslatef(x, y-0.5f*sz, 0);
-	x = y = 0;
-	xx = 0; yy = 0;
-	bool isLower = false, wasLower = false;
-	int c=0;
-
-	/*
-	if (a == 1)
-		glDisable(GL_BLEND);
-	else
-		glEnable(GL_BLEND);
-	glColor4f(r,g,b,a);
-	*/
-	glLineWidth(1);
-	glScalef(sz*0.75f, sz, 1);
-
-	glBegin(GL_LINES);
-
-	while (str[c] != '\0')
-	{
-		if (str[c] <= 'z' && str[c] >= 'a')
-			isLower = true;
-		else
-			isLower = false;
-
-		/*
-		if (isLower)
-			glScalef(sz*0.5f, sz*0.5f, 1);
-		else if (wasLower)
-		{
-			glScalef(sz, sz, 1);
-			wasLower = false;
-		}
-		*/
-
-		switch(toupper(str[c]))
-		{
-		case '_':
-			_VLN(xx, y+1, xx+1, y+1)
-		break;
-		case '-':
-			_VLN(xx, y+0.5f, xx+1, y+0.5f)
-		break;
-		case '~':
-			_VLN(xx, y+0.5f, xx+0.25f, y+0.4f)
-			_VLN(xx+0.25f, y+0.4f, xx+0.75f, y+0.6f)
-			_VLN(xx+0.75f, y+0.6f, xx+1, y+0.5f)
-		break;
-		case 'A':
-			_VLN(xx, y, xx+1, y)
-			_VLN(xx+1, y, xx+1, y+1)
-			_VLN(xx, y, xx, y+1)
-			_VLN(xx, y+0.5f, xx+1, y+0.5f)
-		break;
-		case 'B':
-			_VLN(xx, y, xx+1, y)
-			_VLN(xx+1, y, xx+1, y+1)
-			_VLN(xx, y, xx, y+1)
-			_VLN(xx, y+0.5f, xx+1, y+0.5f)
-			_VLN(xx, y+1, xx+1, y+1)
-		break;
-		case 'C':
-			_VLN(xx, y, xx+1, y)
-			_VLN(xx, y, xx, y+1)
-			_VLN(xx, y+1, xx+1, y+1)
-		break;
-		case 'D':
-			_VLN(xx, y, xx+1, y+0.2f)
-			_VLN(xx, y, xx, y+1)
-			_VLN(xx, y+1, xx+1, y+1)
-			_VLN(xx+1, y+0.2f, xx+1, y+1)
-		break;
-		case 'E':
-			_VLN(xx, y, xx+1, y)
-			_VLN(xx, y, xx, y+1)
-			_VLN(xx, y+0.5f, xx+1, y+0.5f)
-			_VLN(xx, y+1, xx+1, y+1)
-		break;
-		case 'F':
-			_VLN(xx, y, xx+1, y)
-			_VLN(xx, y, xx, y+1)
-			_VLN(xx, y+0.5f, xx+1, y+0.5f)
-		break;
-		case 'G':
-			_VLN(xx, y, xx+1, y)
-			_VLN(xx, y, xx, y+1)
-			_VLN(xx, y+1, xx+1, y+1)
-			_VLN(xx+1, y+0.5f, xx+1, y+1)
-		break;
-		case 'H':
-			_VLN(xx, y, xx, y+1)
-			_VLN(xx, y+0.5f, xx+1, y+0.5f)
-			_VLN(xx+1, y, xx+1, y+1)
-		break;
-		case 'I':
-			_VLN(xx+0.5f, y, xx+0.5f, y+1)
-			_VLN(xx, y, xx+1, y)
-			_VLN(xx, y+1, xx+1, y+1)
-		break;
-		case 'J':
-			_VLN(xx+1, y, xx+1, y+1)
-			_VLN(xx, y, xx+1, y)
-			_VLN(xx, y+1, xx+1, y+1)
-			_VLN(xx, y+1, xx, y+0.75f)
-		break;
-		case 'K':
-			_VLN(xx, y, xx, y+1)
-			_VLN(xx, y+0.25f, xx+1, y)
-			_VLN(xx, y+0.25f, xx+1, y+1)
-		break;
-		case 'L':
-			_VLN(xx, y, xx, y+1)
-			_VLN(xx, y+1, xx+1, y+1)
-		break;
-		case 'M':
-			_VLN(xx, y, xx, y+1)
-			_VLN(xx+1, y, xx+1, y+1)
-			_VLN(xx, y, xx+0.5f, y+0.5f)
-			_VLN(xx+1, y, xx+0.5f, y+0.5f)
-		break;
-		case 'N':
-			_VLN(xx, y, xx, y+1)
-			_VLN(xx+1, y, xx+1, y+1)
-			_VLN(xx, y, xx+1, y+1)
-		break;
-		case 'O':
-			_VLN(xx, y, xx, y+1)
-			_VLN(xx+1, y, xx+1, y+1)
-			_VLN(xx, y+1, xx+1, y+1)
-			_VLN(xx, y, xx+1, y)
-		break;
-		case 'P':
-			_VLN(xx, y, xx+1, y)
-			_VLN(xx, y, xx, y+1)
-			_VLN(xx, y+0.5f, xx+1, y+0.5f)
-			_VLN(xx+1, y+0.5f, xx+1, y)
-		break;
-		case 'Q':
-			_VLN(xx, y, xx, y+1)
-			_VLN(xx+1, y, xx+1, y+1)
-			_VLN(xx, y+1, xx+1, y+1)
-			_VLN(xx, y, xx+1, y)
-			_VLN(xx, y+0.5f, xx+1.25f, y+1.25f)
-		break;
-		case 'R':
-			_VLN(xx, y, xx+1, y)
-			_VLN(xx, y, xx, y+1)
-			_VLN(xx, y+0.5f, xx+1, y+0.5f)
-			_VLN(xx+1, y+0.5f, xx+1, y)
-			_VLN(xx, y+0.5f, xx+1, y+1)
-		break;
-		case 'S':
-			_VLN(xx, y, xx+1, y)
-			_VLN(xx, y, xx, y+0.5f)
-			_VLN(xx, y+0.5f, xx+1, y+0.5f)
-			_VLN(xx+1, y+0.5f, xx+1, y+1)
-			_VLN(xx, y+1, xx+1, y+1)
-		break;
-		case 'T':
-			_VLN(xx, y, xx+1, y)
-			_VLN(xx+0.5f, y, xx+0.5f, y+1)
-		break;
-		case 'U':
-			_VLN(xx, y+1, xx+1, y+1)
-			_VLN(xx, y, xx, y+1)
-			_VLN(xx+1, y, xx+1, y+1)
-		break;
-		case 'V':
-			_VLN(xx, y, xx+0.5f, y+1)
-			_VLN(xx+1, y, xx+0.5f, y+1)
-		break;
-		case 'W':
-			_VLN(xx, y, xx+0.25f, y+1)
-			_VLN(xx+0.25f, y+1, xx+0.5f, y+0.5f)
-			_VLN(xx+0.5f, y+0.5f, xx+0.75f, y+1)
-			_VLN(xx+1, y, xx+0.75f, y+1)
-		break;
-		case 'X':
-			_VLN(xx, y, xx+1, y+1)
-			_VLN(xx+1, y, xx, y+1)
-		break;
-		case 'Y':
-			_VLN(xx, y, xx+0.5f, y+0.5f)
-			_VLN(xx+1, y, xx+0.5f, y+0.5f)
-			_VLN(xx+0.5f, y+0.5f, xx+0.5f, y+1)
-		break;
-		case 'Z':
-			_VLN(xx, y, xx+1, y)
-			_VLN(xx, y+1, xx+1, y)
-			_VLN(xx, y+1, xx+1, y+1)
-		break;
-
-		case '1':
-			_VLN(xx+0.5f, y, xx+0.5f, y+1)
-			_VLN(xx, y+1, xx+1, y+1)
-			_VLN(xx+0.5f, y, xx+0.25f, y+0.25f)
-		break;
-		case '2':
-			_VLN(xx, y, xx+1, y)
-			_VLN(xx+1, y, xx+1, y+0.5f)
-			_VLN(xx+1, y+0.5f, xx, y+0.5f)
-			_VLN(xx, y+0.5f, xx, y+1)
-			_VLN(xx, y+1, xx+1, y+1)
-		break;
-		case '3':
-			_VLN(xx, y, xx+1, y)
-			_VLN(xx, y+1, xx+1, y+1)
-			_VLN(xx, y+0.5f, xx+1, y+0.5f)
-			_VLN(xx+1, y, xx+1, y+1)
-		break;
-		case '4':
-			_VLN(xx+1, y, xx+1, y+1)
-			_VLN(xx+1, y, xx, y+0.5f)
-			_VLN(xx, y+0.5f, xx+1, y+0.5f)
-		break;
-		case '5':
-			_VLN(xx, y, xx+1, y)
-			_VLN(xx, y, xx, y+0.5f)
-			_VLN(xx+1, y+0.5f, xx, y+0.5f)
-			_VLN(xx+1, y+0.5f, xx+1, y+1)
-			_VLN(xx, y+1, xx+1, y+1)
-		break;
-		case '6':
-			_VLN(xx, y, xx+1, y)
-			_VLN(xx, y, xx, y+1)
-			_VLN(xx+1, y+0.5f, xx, y+0.5f)
-			_VLN(xx+1, y+0.5f, xx+1, y+1)
-			_VLN(xx, y+1, xx+1, y+1)
-		break;
-		case '7':
-			_VLN(xx+1, y, xx+0.5f, y+1)
-			_VLN(xx, y, xx+1, y)
-		break;
-		case '8':
-			_VLN(xx, y, xx+1, y)
-			_VLN(xx+1, y, xx+1, y+1)
-			_VLN(xx, y, xx, y+1)
-			_VLN(xx, y+0.5f, xx+1, y+0.5f)
-			_VLN(xx, y+1, xx+1, y+1)
-		break;
-		case '9':
-			_VLN(xx, y, xx+1, y)
-			_VLN(xx+1, y, xx+1, y+1)
-			_VLN(xx, y+0.5f, xx+1, y+0.5f)
-			_VLN(xx, y+0.5f, xx, y)
-		break;
-		case '0':
-			_VLN(xx, y, xx, y+1)
-			_VLN(xx+1, y, xx+1, y+1)
-			_VLN(xx, y+1, xx+1, y+1)
-			_VLN(xx, y, xx+1, y)
-			_VLN(xx, y, xx+1, y+1)
-		break;
-		case '.':
-			_VLN(xx+0.4f, y+1, xx+0.6f, y+1)
-		break;
-		case ',':
-			_VLN(xx+0.5f, y+0.75f, xx+0.5f, y+1.0f);
-			_VLN(xx+0.5f, y+1.0f, xx+0.2f, y+1.25f);
-		break;
-		case ' ':
-		break;
-		case '(':
-		case '[':
-			_VLN(xx, y, xx, y+1);
-			_VLN(xx, y, xx+0.25f, y);
-			_VLN(xx, y+1, xx+0.25f, y+1);
-		break;
-		case ')':
-		case ']':
-			_VLN(xx+1, y, xx+1, y+1);
-			_VLN(xx+1, y, xx+0.75f, y);
-			_VLN(xx+1, y+1, xx+0.75f, y+1);
-		break;
-		case ':':
-			_VLN(xx+0.5f, y, xx+0.5f, y+0.25f);
-			_VLN(xx+0.5f, y+0.75f, xx+0.5f, y+1);
-		break;
-		case '/':
-			_VLN(xx, y+1, xx+1, y);
-		break;
-		default:
-			/*
-			std::ostringstream os;
-			os << "Core::print doesn't know char: " << str[c];
-			debugLog(os.str());
-			*/
-		break;
-		}
-		if (isLower)
-		{
-			wasLower = true;
-
-		}
-		c++;
-		xx += 1.4f;
-	}
-	glEnd();
-
-	glPopMatrix();
-	//glPopAttrib();
+    // TODO: reimplement
+	(void)x; (void)y; (void)str; (void)sz;
 }
 
 void Core::cacheRender()
@@ -2709,14 +2151,32 @@ void Core::render(int startLayer, int endLayer, bool useFrameBufferIfAvail)
 	totalRenderObjectCount = 0;
 
 
-	glBindTexture(GL_TEXTURE_2D, 0);
-	glLoadIdentity();									// Reset The View
-	clearBuffers();
+	// The main scene now always renders into frameBuffer's
+	// target texture rather than conditionally (this replaces the old
+	// GL FBO capture that only engaged when afterEffectManager needed
+	// it).
+	// showBuffer() blits this texture to the real backbuffer once
+	// per frame before presenting. This is a deliberate behavior change
+	// from the old conditional-capture optimization, made so every
+	// capture-based effect (AfterEffect, WaterSurfaceRender,
+	// ScreenTransition) always has a texture to read from
+	// Only engage the main-scene capture if we're the outermost render
+	// call (target is still the real backbuffer / NULL). If some outer
+	// caller already redirected the render target (e.g.
+	// DarkLayer::preRender() calling core->render(layer,layer,false)
+	// while its own separate FrameBuffer is bound), respect that and just
+	// draw directly into it instead of hijacking the target for our own
+	// frameBuffer - matching the original GL code's behavior of always
+	// drawing into whatever FBO happened to already be bound.
+	SDL_Renderer *renderCheckRenderer = core->getRenderer();
+	bool capturing = core->frameBuffer.isInited()
+		&& renderCheckRenderer
+		&& (SDL_GetRenderTarget(renderCheckRenderer) == NULL);
+	if (capturing)
+		core->frameBuffer.startCapture();
 
-	if (afterEffectManager && frameBuffer.isInited() && useFrameBufferIfAvail)
-	{
-		frameBuffer.startCapture();
-	}
+	core->loadBaseTransform();
+	clearBuffers();
 
 	setupRenderPositionAndScale();
 
@@ -2790,12 +2250,55 @@ void Core::render(int startLayer, int endLayer, bool useFrameBufferIfAvail)
 			}
 		}
 	}
+
+	if (capturing)
+	{
+		// AfterEffectManager::render() (if it ran this frame - see the
+		// afterEffectManagerLayer check above) calls
+		// core->frameBuffer.endCapture() itself, mid-loop, then draws its
+		// warped grid directly onto the real backbuffer, intentionally -
+		// any layers after it in this loop then also draw straight to
+		// the backbuffer, stacking on top. In that case capture is
+		// already ended and the captured content has already been drawn
+		// (warped) - blitting frameBuffer's texture again here would
+		// stomp all of that. Only blit if capture is still active,
+		// meaning nothing already handled it this frame.
+		SDL_Renderer *renderer = core->getRenderer();
+		bool stillCapturing = renderer && core->frameBuffer.getTexture()
+			&& (SDL_GetRenderTarget(renderer) == core->frameBuffer.getTexture());
+		if (stillCapturing)
+		{
+			core->frameBuffer.endCapture();
+			// Only blit to screen if this was the outermost call -
+			// endCapture() restoring us to the real backbuffer (target
+			// now NULL) is how we can tell. If we were nested inside
+			// another capture (e.g. DarkLayer::preRender() calling
+			// core->render() for a single layer while its own separate
+			// FrameBuffer is the active render target), endCapture()
+			// restores *that* target instead, and the caller (DarkLayer)
+			// owns compositing its own result - not us. Blitting
+			// unconditionally here would clear and overwrite whatever
+			// that outer capture was building.
+			if (SDL_GetRenderTarget(renderer) == NULL)
+			{
+				SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
+				SDL_RenderClear(renderer);
+				SDL_RenderTexture(renderer, core->frameBuffer.getTexture(), NULL, NULL);
+			}
+		}
+	}
 }
 
 void Core::showBuffer()
 {
 	BBGE_PROF(Core_showBuffer);
-	SDL_GL_SwapWindow(gScreen);
+	if (gRenderer)
+		SDL_RenderPresent(gRenderer);
+}
+
+SDL_Renderer *Core::getRenderer()
+{
+	return gRenderer;
 }
 
 // WARNING: only for use during shutdown
@@ -3212,34 +2715,47 @@ int Core::getVirtualHeight()
 // longer needed.
 unsigned char *Core::grabScreenshot(int x, int y, int w, int h)
 {
-	unsigned char *imageData;
-
 	unsigned int size = sizeof(unsigned char) * w * h * 4;
-	imageData = new unsigned char[size];
+	unsigned char *imageData = new unsigned char[size];
+	memset(imageData, 0, size);
 
-	glPushAttrib(GL_ALL_ATTRIB_BITS);
-	glDisable(GL_BLEND);
-	glDisable(GL_ALPHA_TEST); glDisable(GL_BLEND);
-	glDisable(GL_DEPTH_TEST); glDisable(GL_DITHER); glDisable(GL_FOG);
-	glDisable(GL_LIGHTING); glDisable(GL_LOGIC_OP);
-	glDisable(GL_STENCIL_TEST); glDisable(GL_TEXTURE_1D);
-	glDisable(GL_TEXTURE_2D); glPixelTransferi(GL_MAP_COLOR, GL_FALSE);
-	glPixelTransferi(GL_RED_SCALE, 1); glPixelTransferi(GL_RED_BIAS, 0);
-	glPixelTransferi(GL_GREEN_SCALE, 1); glPixelTransferi(GL_GREEN_BIAS, 0);
-	glPixelTransferi(GL_BLUE_SCALE, 1); glPixelTransferi(GL_BLUE_BIAS, 0);
-	glPixelTransferi(GL_ALPHA_SCALE, 1); glPixelTransferi(GL_ALPHA_BIAS, 0);
-	glRasterPos2i(0, 0);
-	glReadPixels(x, y, w, h, GL_RGBA, GL_UNSIGNED_BYTE, (GLvoid*)imageData);
-	glPopAttrib();
+	SDL_Renderer *renderer = core->getRenderer();
+	if (!renderer)
+		return imageData;
 
-	// Force all alpha values to 255.
-	unsigned char *c = imageData;
-	for (int x = 0; x < w; x++)
+	SDL_Rect rect = { x, y, w, h };
+	SDL_Surface *surf = SDL_RenderReadPixels(renderer, &rect);
+	if (!surf)
+		return imageData;
+
+	SDL_Surface *converted = surf;
+	if (surf->format != SDL_PIXELFORMAT_RGBA32)
 	{
-		for (int y = 0; y < h; y++, c += 4)
-		{
-			c[3] = 255;
-		}
+		converted = SDL_ConvertSurface(surf, SDL_PIXELFORMAT_RGBA32);
+		SDL_DestroySurface(surf);
+		if (!converted)
+			return imageData;
+	}
+
+	if (SDL_MUSTLOCK(converted))
+		SDL_LockSurface(converted);
+
+	const int rowBytes = w * 4;
+	const unsigned char *src = (const unsigned char*)converted->pixels;
+	for (int row = 0; row < h && row < converted->h; row++)
+	{
+		memcpy(imageData + (size_t)row * rowBytes, src + (size_t)row * converted->pitch, rowBytes);
+	}
+
+	if (SDL_MUSTLOCK(converted))
+		SDL_UnlockSurface(converted);
+	SDL_DestroySurface(converted);
+
+	// Force all alpha values to 255 (matches original behavior).
+	unsigned char *c = imageData;
+	for (int i = 0; i < w*h; i++, c += 4)
+	{
+		c[3] = 255;
 	}
 
 	return imageData;
@@ -3288,6 +2804,7 @@ void Core::saveSizedScreenshotTGA(const std::string &filename, int sz, int crop3
 
 	unsigned int size = sizeof(unsigned char) * w * h * 3;
 	imageData = (unsigned char *)malloc(size);
+	memset(imageData, 0, size);
 
 	float wbit = fsz;//+1;
 	float hbit = ((fsz)*(3.0f/4.0f));
@@ -3319,88 +2836,109 @@ void Core::saveSizedScreenshotTGA(const std::string &filename, int sz, int crop3
 	os << "copyw: " << copyw << " copyh: " << copyh << std::endl;
 	debugLog(os.str());
 
-	glRasterPos2i(0, 0);
-	
-	/*
-	glPushAttrib(GL_ALL_ATTRIB_BITS);
+	SDL_Renderer *renderer = core->getRenderer();
+	if (renderer && core->frameBuffer.isInited() && core->frameBuffer.getTexture())
+	{
+		SDL_Texture *outTex = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_RGBA32, SDL_TEXTUREACCESS_TARGET, w, h);
+		if (outTex)
+		{
+			SDL_Texture *prevTarget = SDL_GetRenderTarget(renderer);
+			SDL_SetRenderTarget(renderer, outTex);
 
-	glDisable(GL_BLEND);
+			SDL_Texture *srcTex = core->frameBuffer.getTexture();
+			SDL_FRect srcRect = { (float)diff, 0.0f, (float)width, (float)height };
+			SDL_BlendMode prevBlend = SDL_BLENDMODE_BLEND;
+			SDL_GetTextureBlendMode(srcTex, &prevBlend);
+			SDL_SetTextureBlendMode(srcTex, SDL_BLENDMODE_NONE);
+			SDL_RenderTexture(renderer, srcTex, &srcRect, NULL);
+			SDL_SetTextureBlendMode(srcTex, prevBlend);
 
-	glDisable(GL_ALPHA_TEST); glDisable(GL_BLEND);
-	glDisable(GL_DEPTH_TEST); glDisable(GL_DITHER); glDisable(GL_FOG);
-	glDisable(GL_LIGHTING); glDisable(GL_LOGIC_OP);
-	glDisable(GL_STENCIL_TEST); glDisable(GL_TEXTURE_1D);
-	glDisable(GL_TEXTURE_2D); glPixelTransferi(GL_MAP_COLOR,
-		GL_FALSE); glPixelTransferi(GL_RED_SCALE, 1);
-	glPixelTransferi(GL_RED_BIAS, 0); glPixelTransferi(GL_GREEN_SCALE, 1);
-	glPixelTransferi(GL_GREEN_BIAS, 0); glPixelTransferi(GL_BLUE_SCALE, 1);
-	glPixelTransferi(GL_BLUE_BIAS, 0); glPixelTransferi(GL_ALPHA_SCALE, 1);
-	glPixelTransferi(GL_ALPHA_BIAS, 0);
-	*/
+			SDL_Surface *surf = SDL_RenderReadPixels(renderer, NULL);
+			SDL_SetRenderTarget(renderer, prevTarget);
 
-	//glPixelStorei(GL_PACK_ALIGNMENT, 1);
-
-	debugLog("pixel zoom");
-	glPixelZoom(zx,zy);
-	glFlush();
-
-	glPixelZoom(1,1);
-	debugLog("copy pixels");
-	glCopyPixels(diff, 0, width, height, GL_COLOR);
-	glFlush();
-
-	debugLog("read pixels");
-	glReadPixels(0, 0, w, h, GL_RGB, GL_UNSIGNED_BYTE, (GLvoid*)imageData);
-	glFlush();
+			if (surf)
+			{
+				SDL_Surface *converted = surf;
+				if (surf->format != SDL_PIXELFORMAT_RGB24)
+				{
+					converted = SDL_ConvertSurface(surf, SDL_PIXELFORMAT_RGB24);
+					SDL_DestroySurface(surf);
+				}
+				if (converted)
+				{
+					if (SDL_MUSTLOCK(converted)) SDL_LockSurface(converted);
+					int rowBytes = w * 3;
+					for (int row = 0; row < h && row < converted->h; row++)
+						memcpy(imageData + (size_t)row * rowBytes,
+							(unsigned char*)converted->pixels + (size_t)row * converted->pitch, rowBytes);
+					if (SDL_MUSTLOCK(converted)) SDL_UnlockSurface(converted);
+					SDL_DestroySurface(converted);
+				}
+			}
+			SDL_DestroyTexture(outTex);
+		}
+	}
 
 	int savebits = 24;
-	debugLog("saving bpp");
 	tgaSave(filename.c_str(),w,h,savebits,imageData);
-
-	debugLog("pop");
-	//glPopAttrib();
 
 	debugLog("done");
 }
 
 void Core::save64x64ScreenshotTGA(const std::string &filename)
 {
-	int w, h;
-	unsigned char *imageData;
+	int w = 64, h = 64;
+	unsigned char *imageData = (unsigned char *)malloc(sizeof(unsigned char) * w * h * 4);
+	memset(imageData, 0, (size_t)w * h * 4);
 
-// compute width and heidth of the image
-	//w = xmax - xmin;
-	//h = ymax - ymin;
-	w = 64;
-	h = 64;
-
-// allocate memory for the pixels
-	imageData = (unsigned char *)malloc(sizeof(unsigned char) * w * h * 4);
-
-// read the pixels from the frame buffer
-
-	//glReadPixels(xmin,ymin,xmax,ymax,GL_RGBA,GL_UNSIGNED_BYTE, (GLvoid *)imageData);
-	glPixelZoom(64.0f/(float)getVirtualWidth(), 48.0f/(float)getVirtualHeight());
-	glCopyPixels(0, 0, getVirtualWidth(), getVirtualHeight(), GL_COLOR);
-
-	glReadPixels(0,0,64,64,GL_RGBA,GL_UNSIGNED_BYTE, (GLvoid *)imageData);
-
-
-	unsigned char *c = imageData;
-	for (int x=0; x < w; x++)
+	SDL_Renderer *renderer = core->getRenderer();
+	if (renderer && core->frameBuffer.isInited() && core->frameBuffer.getTexture())
 	{
-		for (int y=0; y< h; y++)
+		SDL_Texture *thumbTex = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_RGBA32, SDL_TEXTUREACCESS_TARGET, w, h);
+		if (thumbTex)
 		{
-			c += 3;
-			(*c) = 255;
-			c ++;
+			SDL_Texture *prevTarget = SDL_GetRenderTarget(renderer);
+			SDL_SetRenderTarget(renderer, thumbTex);
+
+			SDL_Texture *srcTex = core->frameBuffer.getTexture();
+			SDL_BlendMode prevBlend = SDL_BLENDMODE_BLEND;
+			SDL_GetTextureBlendMode(srcTex, &prevBlend);
+			SDL_SetTextureBlendMode(srcTex, SDL_BLENDMODE_NONE);
+			SDL_RenderTexture(renderer, srcTex, NULL, NULL); // scales to fill thumbTex
+			SDL_SetTextureBlendMode(srcTex, prevBlend);
+
+			SDL_Surface *surf = SDL_RenderReadPixels(renderer, NULL);
+			SDL_SetRenderTarget(renderer, prevTarget);
+
+			if (surf)
+			{
+				SDL_Surface *converted = surf;
+				if (surf->format != SDL_PIXELFORMAT_RGBA32)
+				{
+					converted = SDL_ConvertSurface(surf, SDL_PIXELFORMAT_RGBA32);
+					SDL_DestroySurface(surf);
+				}
+				if (converted)
+				{
+					if (SDL_MUSTLOCK(converted)) SDL_LockSurface(converted);
+					int rowBytes = w * 4;
+					for (int row = 0; row < h && row < converted->h; row++)
+						memcpy(imageData + (size_t)row * rowBytes,
+							(unsigned char*)converted->pixels + (size_t)row * converted->pitch, rowBytes);
+					if (SDL_MUSTLOCK(converted)) SDL_UnlockSurface(converted);
+					SDL_DestroySurface(converted);
+				}
+			}
+			SDL_DestroyTexture(thumbTex);
 		}
 	}
 
+	// Force alpha to 255 (matches original behavior).
+	unsigned char *c = imageData;
+	for (int i = 0; i < w*h; i++, c += 4)
+		c[3] = 255;
 
-// save the image
 	tgaSave(filename.c_str(),64,64,32,imageData);
-	glPixelZoom(1,1);
 
 	// do NOT free imageData here
 	// it IS freed in tgaSave

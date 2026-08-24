@@ -19,6 +19,7 @@ along with this program; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 */
 #include "Collision.h"
+#include "Core.h"
 
 CollisionShape::CollisionShape()
 {
@@ -203,47 +204,34 @@ float CollisionShape::getX2()
 
 void CollisionShape::render()
 {
-	glTranslatef(offsetPosition.x, offsetPosition.y,0);
+	SDL_Renderer *renderer = core->getRenderer();
+	if (!renderer) return;
+
 	switch(getType())
 	{
 	case CIRCLE:
 		drawCircle(radius);
 	break;
 	case AABB:
-	//case CIRCLE:
-		//glColor3f(1,1,1);
-		
-		//glLineWidth(2);
-		
-		glBegin(GL_QUADS);
-		{
-			glVertex2f(-xw,yw);
-			glVertex2f(xw,yw);
-			glVertex2f(xw,-yw);
-			glVertex2f(-xw,-yw);
+	{
+		glm::vec4 p0 = core->transform.transformPoint(offsetPosition.x-xw, offsetPosition.y+yw);
+		glm::vec4 p1 = core->transform.transformPoint(offsetPosition.x+xw, offsetPosition.y+yw);
+		glm::vec4 p2 = core->transform.transformPoint(offsetPosition.x+xw, offsetPosition.y-yw);
+		glm::vec4 p3 = core->transform.transformPoint(offsetPosition.x-xw, offsetPosition.y-yw);
 
-			/*
-			glColor4f(0.0f, 1.0f, 0.0f, 1.0f);
-			glVertex2f(topLeft.x, topLeft.y);
-			glVertex2f(bottomRight.x, topLeft.y);
+		SDL_FColor white = {1,1,1,1};
+		SDL_Vertex v[4];
+		v[0].position={p0.x,p0.y}; v[0].tex_coord={0,0}; v[0].color=white;
+		v[1].position={p1.x,p1.y}; v[1].tex_coord={0,0}; v[1].color=white;
+		v[2].position={p2.x,p2.y}; v[2].tex_coord={0,0}; v[2].color=white;
+		v[3].position={p3.x,p3.y}; v[3].tex_coord={0,0}; v[3].color=white;
+		static const int idx[6] = {0,1,2,0,2,3};
 
-			glVertex2f(bottomRight.x, topLeft.y);
-			glVertex2f(bottomRight.x, bottomRight.y);
-
-			glVertex2f(bottomRight.x, bottomRight.y);
-			glVertex2f(topLeft.x, bottomRight.y);
-
-			glVertex2f(topLeft.x, bottomRight.y);
-			glVertex2f(topLeft.x, topLeft.y);
-
-			*/
-		}
-		glEnd();
-
+		SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_BLEND);
+		SDL_RenderGeometry(renderer, NULL, v, 4, idx, 6);
+	}
 	break;
 	}
-
-	glTranslatef(-offsetPosition.x, -offsetPosition.y,0);
 	//glDisable(GL_BLEND);
 	
 }

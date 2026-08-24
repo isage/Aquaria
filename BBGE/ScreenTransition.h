@@ -22,6 +22,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #define SCREENTRANSITION_H
 
 #include "RenderObject.h"
+#include "FrameBuffer.h"
 
 class ScreenTransition : public RenderObject
 {
@@ -36,13 +37,16 @@ public:
 protected:
 	void createTexture();
 	void destroyTexture();
-	int textureWidth, textureHeight;
 	int windowWidth, windowHeight;
 	void onRender();
 	float width, height;
 	//void onUpdate(float dt);
 
-	GLuint screen_texture;
+	// Own FrameBuffer instance (not core->frameBuffer) because this needs
+	// a frozen snapshot of one specific moment (whenever capture() is
+	// called), not a continuously-updated live capture - see
+	// FrameBuffer::copyFrom() and the migration plan.
+	FrameBuffer captureBuffer;
 };
 
 #endif

@@ -24,15 +24,11 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "Base.h"
 #include "BaseText.h"
 
-#ifdef AQUARIA_INTERNAL_FTGL
-#include <ft2build.h>
-#include FT_FREETYPE_H
+#include <SDL3_ttf/SDL_ttf.h>
 
-#include "FTGL.h"
-#include "FTGLTextureFont.h"
-#else
-#include <FTGL/ftgl.h>
-#endif
+// Called once from Core::shutdownGraphicsLibrary() before the renderer is
+// destroyed - tears down the shared TTF_TextEngine.
+void ttfShutdown();
 
 struct TTFFont
 {
@@ -43,8 +39,7 @@ struct TTFFont
 	void load(const std::string &str, int sz=24);
 	void create(const unsigned char *data, unsigned long datalen, int sz=24);
 
-
-	FTGLTextureFont *font;
+	TTF_Font *font;
 };
 
 class TTFText : public BaseText

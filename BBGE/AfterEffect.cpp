@@ -22,6 +22,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 //#include "math.h"
 
 #include <assert.h>
+#include <vector>
 
 Effect::Effect()
 {
@@ -100,6 +101,16 @@ void AfterEffectManager::update(float dt)
 
 	resetGrid();
 
+	// Restored to match the original: `active` becomes true whenever a
+	// frame buffer exists, not just when a real effect is running. The
+	// previous round's change (gating this on effects.size() > 0) was a
+	// deliberate, documented workaround for a real bug in render()'s xf
+	// transform (see there) - now that the actual root cause is fixed
+	// (copying the live core->transform instead of hand-rebuilding it),
+	// there's no longer a reason to deviate from the original's
+	// always-active behavior, and reverting avoids leaving an
+	// undocumented, permanent behavior change for a bug that's actually
+	// fixed now.
 	if (core->frameBuffer.isInited())
 		active = true;
 	else
@@ -145,22 +156,27 @@ void AfterEffectManager::render()
 {
 	assert(core->frameBuffer.isInited());
 
-	glPushMatrix();
+	SDL_Renderer *renderer = core->getRenderer();
+	if (!renderer) return;
 
-	glDisable (GL_ALPHA_TEST);
-	glDisable(GL_BLEND);
+	RenderTransformStack xf = core->transform;
+	xf.translate(core->cameraPos.x, core->cameraPos.y, 0);
+	xf.scale(core->invGlobalScale, core->invGlobalScale, 1);
 
+	// Ends the main-scene capture early and switches drawing back to the
+	// real backbuffer - see the comment in Core::render() about why later
+	// layers then draw directly on top of this instead of also being
+	// captured.
 	core->frameBuffer.endCapture();
-	glTranslatef(core->cameraPos.x, core->cameraPos.y, 0);
-	glScalef(core->invGlobalScale, core->invGlobalScale,0);
 
-	glColor4f(1,1,1,1);
-	renderGrid();
-	//renderGridPoints();
-	glPopMatrix();
+	SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
+	SDL_RenderClear(renderer);
+
+	SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_NONE);
+	renderGrid(xf);
 }
 
-void AfterEffectManager::renderGrid()
+void AfterEffectManager::renderGrid(const RenderTransformStack &xf)
 {
 	screenWidth = core->getWindowWidth();
 	screenHeight = core->getWindowHeight();
@@ -174,96 +190,56 @@ void AfterEffectManager::renderGrid()
 	int offx = -core->getVirtualOffX();
 	int offy = -core->getVirtualOffY();
 
-	core->frameBuffer.bindTexture();
+	SDL_Renderer *renderer = core->getRenderer();
+	if (!renderer) return;
+	SDL_Texture *tex = core->frameBuffer.getTexture();
 
-	//float div = xDivs;
-	for (int i = 0; i < (xDivs-1); i++)
+	// One batched draw for the whole grid (xDivs-1)*(yDivs-1) quads,
+	// rather than the old per-cell glBegin/glEnd immediate-mode calls.
+	const int cellsX = xDivs - 1;
+	const int cellsY = yDivs - 1;
+	if (cellsX <= 0 || cellsY <= 0) return;
+
+	std::vector<SDL_Vertex> verts;
+	std::vector<int> indices;
+	verts.reserve((size_t)cellsX * cellsY * 4);
+	indices.reserve((size_t)cellsX * cellsY * 6);
+
+	SDL_FColor white = {1,1,1,1};
+
+	for (int i = 0; i < cellsX; i++)
 	{
-		for (int j = 0; j < (yDivs-1); j++)
-		{				
-			glBegin(GL_QUADS);		
-				//glColor3f(i/div, i/div, i/div);
-				glTexCoord2f(i/(float)(xDivs-1)*percentX,  1*percentY-(j)/(float)(yDivs-1)*percentY);
-					//glMultiTexCoord2fARB(GL_TEXTURE0_ARB,i/(float)(xDivs-1)*percentX,  1*percentY-(j)/(float)(yDivs-1)*percentY);
-					//glMultiTexCoord2fARB(GL_TEXTURE1_ARB,0,0);
-				glVertex2f(offx + vw*drawGrid[i][j].x,		offy + vh*drawGrid[i][j].y);
-				glTexCoord2f(i/(float)(xDivs-1)*percentX, 1*percentY-(j+1)/(float)(yDivs-1)*percentY);
-					//glMultiTexCoord2fARB(GL_TEXTURE0_ARB,i/(float)(xDivs-1)*percentX, 1*percentY-(j+1)/(float)(yDivs-1)*percentY);
-					//glMultiTexCoord2fARB(GL_TEXTURE1_ARB,0,(float)(screenHeight/(yDivs-1))/16);
-				glVertex2f(offx + vw*drawGrid[i][j+1].x,		offy + vh*drawGrid[i][j+1].y);
-				glTexCoord2f((i+1)/(float)(xDivs-1)*percentX, 1*percentY-(j+1)/(float)(yDivs-1)*percentY);	
-					//glMultiTexCoord2fARB(GL_TEXTURE0_ARB,(i+1)/(float)(xDivs-1)*percentX, 1*percentY-(j+1)/(float)(yDivs-1)*percentY);	
-					//glMultiTexCoord2fARB(GL_TEXTURE1_ARB,(float)(screenWidth/(xDivs-1))/16,(float)(screenHeight/(yDivs-1))/16);			
-				glVertex2f(offx + vw*drawGrid[i+1][j+1].x,	offy + vh*drawGrid[i+1][j+1].y);
-				glTexCoord2f((i+1)/(float)(xDivs-1)*percentX, 1*percentY-(j)/(float)(yDivs-1)*percentY);	
-					//glMultiTexCoord2fARB(GL_TEXTURE0_ARB,(i+1)/(float)(xDivs-1)*percentX, 1*percentY-(j)/(float)(yDivs-1)*percentY);	
-					//glMultiTexCoord2fARB(GL_TEXTURE1_ARB,(float)(screenWidth/(xDivs-1))/16,0);			
-				glVertex2f(offx + vw*drawGrid[i+1][j].x,		offy + vh*drawGrid[i+1][j].y);				
-			glEnd();
-		}
-	}
-
-	float width2 = float(vw)/2;
-	float height2 = float(vh)/2;
-
-	// uncomment to render grid points
-	/*
-	glBindTexture(GL_TEXTURE_2D, 0);
-	glPointSize(2);
-	glColor4f(1, 0, 0, 0.5);
-	for (int i = 0; i < (xDivs-1); i++)
-	{
-		for (int j = 0; j < (yDivs-1); j++)
-		{				
-			glBegin(GL_POINTS);		
-				//glColor3f(i/div, i/div, i/div);
-				glTexCoord2f(i/(float)(xDivs-1)*percentX,  1*percentY-(j)/(float)(yDivs-1)*percentY);
-					//glMultiTexCoord2fARB(GL_TEXTURE0_ARB,i/(float)(xDivs-1)*percentX,  1*percentY-(j)/(float)(yDivs-1)*percentY);
-					//glMultiTexCoord2fARB(GL_TEXTURE1_ARB,0,0);
-				glVertex2f(800*drawGrid[i][j].x,		600*drawGrid[i][j].y);
-				glTexCoord2f(i/(float)(xDivs-1)*percentX, 1*percentY-(j+1)/(float)(yDivs-1)*percentY);
-					//glMultiTexCoord2fARB(GL_TEXTURE0_ARB,i/(float)(xDivs-1)*percentX, 1*percentY-(j+1)/(float)(yDivs-1)*percentY);
-					//glMultiTexCoord2fARB(GL_TEXTURE1_ARB,0,(float)(screenHeight/(yDivs-1))/16);
-				glVertex2f(800*drawGrid[i][j+1].x,		600*drawGrid[i][j+1].y);
-				glTexCoord2f((i+1)/(float)(xDivs-1)*percentX, 1*percentY-(j+1)/(float)(yDivs-1)*percentY);	
-					//glMultiTexCoord2fARB(GL_TEXTURE0_ARB,(i+1)/(float)(xDivs-1)*percentX, 1*percentY-(j+1)/(float)(yDivs-1)*percentY);	
-					//glMultiTexCoord2fARB(GL_TEXTURE1_ARB,(float)(screenWidth/(xDivs-1))/16,(float)(screenHeight/(yDivs-1))/16);			
-				glVertex2f(800*drawGrid[i+1][j+1].x,	600*drawGrid[i+1][j+1].y);
-				glTexCoord2f((i+1)/(float)(xDivs-1)*percentX, 1*percentY-(j)/(float)(yDivs-1)*percentY);	
-					//glMultiTexCoord2fARB(GL_TEXTURE0_ARB,(i+1)/(float)(xDivs-1)*percentX, 1*percentY-(j)/(float)(yDivs-1)*percentY);	
-					//glMultiTexCoord2fARB(GL_TEXTURE1_ARB,(float)(screenWidth/(xDivs-1))/16,0);			
-				glVertex2f(800*drawGrid[i+1][j].x,		600*drawGrid[i+1][j].y);				
-			glEnd();
-		}
-	}	
-	*/
-
-	//glDisable(GL_TEXTURE_2D);
-	RenderObject::lastTextureApplied = 0;
-	glBindTexture(GL_TEXTURE_2D, 0);
-
-	//glActiveTextureARB(GL_TEXTURE0_ARB);
-	//glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_MODULATE);	
-	//if (bRenderGridPoints)
-	//	renderGridPoints();
-}
-
-void AfterEffectManager::renderGridPoints()
-{
-	glColor4f(0.0f,0.0f,0.0f,1.0f);
-	for (int i = 0; i < (xDivs); i++)
-	{
-		for (int j = 0; j < (yDivs); j++)
+		for (int j = 0; j < cellsY; j++)
 		{
-		glBegin(GL_QUADS);
-			glVertex2f(screenWidth*drawGrid[i][j].x-3,	screenHeight*drawGrid[i][j].y-3);
-			glVertex2f(screenWidth*drawGrid[i][j].x-3,	screenHeight*drawGrid[i][j].y+3);
-			glVertex2f(screenWidth*drawGrid[i][j].x+3,	screenHeight*drawGrid[i][j].y+3);
-			glVertex2f(screenWidth*drawGrid[i][j].x+3,	screenHeight*drawGrid[i][j].y-3);
-		glEnd();
+			float u0 = i/(float)(xDivs-1)*percentX;
+			float u1 = (i+1)/(float)(xDivs-1)*percentX;
+			float v0 = (j)/(float)(yDivs-1)*percentY;
+			float v1 = (j+1)/(float)(yDivs-1)*percentY;
+
+			glm::vec4 p00 = xf.transformPoint(offx + vw*drawGrid[i][j].x,   offy + vh*drawGrid[i][j].y);
+			glm::vec4 p01 = xf.transformPoint(offx + vw*drawGrid[i][j+1].x, offy + vh*drawGrid[i][j+1].y);
+			glm::vec4 p11 = xf.transformPoint(offx + vw*drawGrid[i+1][j+1].x, offy + vh*drawGrid[i+1][j+1].y);
+			glm::vec4 p10 = xf.transformPoint(offx + vw*drawGrid[i+1][j].x, offy + vh*drawGrid[i+1][j].y);
+
+			int base = (int)verts.size();
+			SDL_Vertex v;
+			v.color = white;
+
+			v.position = {p00.x, p00.y}; v.tex_coord = {u0, v0}; verts.push_back(v);
+			v.position = {p01.x, p01.y}; v.tex_coord = {u0, v1}; verts.push_back(v);
+			v.position = {p11.x, p11.y}; v.tex_coord = {u1, v1}; verts.push_back(v);
+			v.position = {p10.x, p10.y}; v.tex_coord = {u1, v0}; verts.push_back(v);
+
+			indices.push_back(base+0); indices.push_back(base+1); indices.push_back(base+2);
+			indices.push_back(base+0); indices.push_back(base+2); indices.push_back(base+3);
 		}
 	}
+
+	SDL_RenderGeometry(renderer, tex, verts.data(), (int)verts.size(), indices.data(), (int)indices.size());
+
+	RenderObject::lastTextureApplied = 0;
 }
+
 
 void AfterEffectManager::unloadDevice()
 {

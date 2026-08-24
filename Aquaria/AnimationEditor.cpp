@@ -37,15 +37,18 @@ class TimelineRender : public RenderObject
 {
 	void onRender()
 	{
-		glLineWidth(1);
-		glBegin(GL_LINES);
-		glColor4f(1, 1, 1, 1);
+		SDL_Renderer *renderer = core->getRenderer();
+		if (!renderer) return;
+
+		SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_BLEND);
+		SDL_SetRenderDrawColorFloat(renderer, 1, 1, 1, 1);
 		for (int x = 0; x < 800; x += TIMELINE_GRIDSIZE)
 		{
-			glVertex3f(x, -5, 0);
-			glVertex3f(x, 5, 0);
+			glm::vec4 p0 = core->transform.transformPoint(x, -5);
+			glm::vec4 p1 = core->transform.transformPoint(x, 5);
+			SDL_FPoint pts[2] = {{p0.x,p0.y},{p1.x,p1.y}};
+			SDL_RenderLines(renderer, pts, 2);
 		}
-		glEnd();
 	}
 };
 

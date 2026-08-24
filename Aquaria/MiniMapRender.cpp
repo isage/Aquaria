@@ -21,6 +21,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "GridRender.h"
 #include "Game.h"
 #include "Avatar.h"
+#include "../BBGE/QuadDrawHelper.h"
 
 namespace MiniMapRenderSpace
 {
@@ -420,38 +421,23 @@ void MiniMapRender::onUpdate(float dt)
 
 void MiniMapRender::onRender()
 {
-	glBindTexture(GL_TEXTURE_2D, 0);
 	RenderObject::lastTextureApplied = 0;
 	const float alphaValue = alpha.x;
+
+	SDL_Renderer *renderer = core->getRenderer();
+	if (!renderer) return;
 
 	const TileVector centerTile(dsq->game->avatar->position);
 
 	if (alphaValue > 0)
 	{
-		texMinimapBtm->apply();
-
-		glBegin(GL_QUADS);
-			glColor4f(lightLevel, lightLevel, lightLevel, 1);
-			glTexCoord2f(0, 1);
-			glVertex2f(-miniMapGuiSize, miniMapGuiSize);
-			glTexCoord2f(1, 1);
-			glVertex2f(miniMapGuiSize, miniMapGuiSize);
-			glTexCoord2f(1, 0);
-			glVertex2f(miniMapGuiSize, -miniMapGuiSize);
-			glTexCoord2f(0, 0);
-			glVertex2f(-miniMapGuiSize, -miniMapGuiSize);
-		glEnd();
-
-		texMinimapBtm->unbind();
-
+		drawTexturedQuad(renderer, texMinimapBtm, 0, 0, miniMapGuiSize, miniMapGuiSize,
+			lightLevel, lightLevel, lightLevel, 1, SDL_BLENDMODE_BLEND);
 
 		if (lightLevel > 0)
 		{
-			texWaterBit->apply();
-
-			glBlendFunc(GL_SRC_ALPHA,GL_ONE);
-			glColor4f(0.1, 0.2, 0.9, 0.4f*lightLevel);
 			bool curColorIsWater = true;
+			float wr=0.1f, wg=0.2f, wb=0.9f, wa=0.4f*lightLevel;
 
 			const int xmin = int(ceilf(dsq->game->cameraMin.x / TILE_SIZE));
 			const int ymin = int(ceilf(dsq->game->cameraMin.y / TILE_SIZE));
@@ -491,7 +477,7 @@ void MiniMapRender::onRender()
 						{
 							if (curColorIsWater)
 							{
-								glColor4f(0.1, 0.2, 0.5, 0.2f*lightLevel);
+								wr=0.1f; wg=0.2f; wb=0.5f; wa=0.2f*lightLevel;
 								curColorIsWater = false;
 							}
 						}
@@ -499,14 +485,12 @@ void MiniMapRender::onRender()
 						{
 							if (!curColorIsWater)
 							{
-								glColor4f(0.1, 0.2, 0.9, 0.4f*lightLevel);
+								wr=0.1f; wg=0.2f; wb=0.9f; wa=0.4f*lightLevel;
 								curColorIsWater = true;
 							}
 						}
 
 						const Vector miniMapPos = Vector(tilePos - dsq->game->avatar->position) * (1.0f / miniMapScale);
-
-						glTranslatef(miniMapPos.x, miniMapPos.y, 0);
 
 						const float indexMult = bitSizeLookupPeriod / (2*PI);
 						const float v = waterSin
@@ -515,25 +499,11 @@ void MiniMapRender::onRender()
 						const unsigned int sizeIndex = (unsigned int)(v) % bitSizeLookupPeriod;
 						const float bitSize = bitSizeLookup[sizeIndex];
 
-						glBegin(GL_QUADS);
-							glTexCoord2f(0, 1);
-							glVertex2f(-bitSize, bitSize);
-							glTexCoord2f(1, 1);
-							glVertex2f(bitSize, bitSize);
-							glTexCoord2f(1, 0);
-							glVertex2f(bitSize, -bitSize);
-							glTexCoord2f(0, 0);
-							glVertex2f(-bitSize, -bitSize);
-						glEnd();
-
-						glTranslatef(-miniMapPos.x, -miniMapPos.y, 0);
+						drawTexturedQuad(renderer, texWaterBit, miniMapPos.x, miniMapPos.y, bitSize, bitSize,
+							wr, wg, wb, wa, SDL_BLENDMODE_ADD);
 					}
 				}
 			}
-			texWaterBit->unbind();
-			glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-			glBindTexture(GL_TEXTURE_2D, 0);
-
 		}
 	}
 
@@ -541,7 +511,6 @@ void MiniMapRender::onRender()
 	{
 		const float factor = sinf(game->getTimer()*PI);
 		const float iconSize = iconBaseSize + factor*iconThrobSize;
-		texRipple->apply();
 		// FIXME: use getFirstPathOfType?
 		for (int i = 0; i < dsq->game->getNumPaths(); i++)
 		{
@@ -580,47 +549,31 @@ void MiniMapRender::onRender()
 					}
 					const Vector miniMapPos = Vector(d)*Vector(1.0f/miniMapScale, 1.0f/miniMapScale);
 
+					float ir=1,ig=1,ib=1,ia=1;
 					switch(p->pathType)
 					{
 					case PATH_COOK:
 					{
-						glColor4f(1, 1, 1, 1);
-
-						glTranslatef(miniMapPos.x, miniMapPos.y, 0);
 						const float sz = iconCookSize * iconScale;
-
-						texCook->apply();
-
-						glBegin(GL_QUADS);
-							glTexCoord2f(0, 1);
-							glVertex2f(-sz, sz);
-							glTexCoord2f(1, 1);
-							glVertex2f(sz, sz);
-							glTexCoord2f(1, 0);
-							glVertex2f(sz, -sz);
-							glTexCoord2f(0, 0);
-							glVertex2f(-sz, -sz);
-						glEnd();
-
-						glTranslatef(-miniMapPos.x, -miniMapPos.y, 0);
-						texRipple->apply();
+						drawTexturedQuad(renderer, texCook, miniMapPos.x, miniMapPos.y, sz, sz,
+							1,1,1,1, SDL_BLENDMODE_BLEND);
 						render = false;  // Skip common rendering code
 					}
 					break;
 					case PATH_SAVEPOINT:
 					{
-						glColor4f(1.0, 0, 0, alphaValue*0.75f);
+						ir=1.0f; ig=0; ib=0; ia=alphaValue*0.75f;
 					}
 					break;
 					case PATH_WARP:
 					{
 						if (p->naijaHome)
 						{
-							glColor4f(1.0, 0.9, 0.2, alphaValue*0.75f);	
+							ir=1.0f; ig=0.9f; ib=0.2f; ia=alphaValue*0.75f;
 						}
 						else
 						{
-							glColor4f(1.0, 1.0, 1.0, alphaValue*0.75f);
+							ir=1.0f; ig=1.0f; ib=1.0f; ia=alphaValue*0.75f;
 						}
 					}
 					break;
@@ -628,64 +581,22 @@ void MiniMapRender::onRender()
 
 					if (render)
 					{
-						glTranslatef(miniMapPos.x, miniMapPos.y, 0);
 						const float sz = iconSize * iconScale;
-
-						glBegin(GL_QUADS);
-							glTexCoord2f(0, 1);
-							glVertex2f(-sz, sz);
-							glTexCoord2f(1, 1);
-							glVertex2f(sz, sz);
-							glTexCoord2f(1, 0);
-							glVertex2f(sz, -sz);
-							glTexCoord2f(0, 0);
-							glVertex2f(-sz, -sz);
-						glEnd();
-
-						glTranslatef(-miniMapPos.x, -miniMapPos.y, 0);
+						drawTexturedQuad(renderer, texRipple, miniMapPos.x, miniMapPos.y, sz, sz,
+							ir, ig, ib, ia, SDL_BLENDMODE_BLEND);
 					}
 				}
 			}
 		}
-		texRipple->unbind();
 	}
 
-	glColor4f(1,1,1, alphaValue);
+	{
+		const int hsz = 20;
+		drawTexturedQuad(renderer, texNaija, 0, 0, hsz, hsz, 1,1,1, alphaValue, SDL_BLENDMODE_BLEND);
+	}
 
-	const int hsz = 20;
-	texNaija->apply();
-
-	glBegin(GL_QUADS);
-		glTexCoord2f(0, 1);
-		glVertex2f(-hsz, hsz);
-		glTexCoord2f(1, 1);
-		glVertex2f(hsz, hsz);
-		glTexCoord2f(1, 0);
-		glVertex2f(hsz, -hsz);
-		glTexCoord2f(0, 0);
-		glVertex2f(-hsz, -hsz);
-	glEnd();
-
-	texNaija->unbind();
-	glBindTexture(GL_TEXTURE_2D, 0);
-
-	glColor4f(1,1,1,1);
-
-	texMinimapTop->apply();
-	glBegin(GL_QUADS);
-		glTexCoord2f(0, 1);
-		glVertex2f(-miniMapGuiSize, miniMapGuiSize);
-		glTexCoord2f(1, 1);
-		glVertex2f(miniMapGuiSize, miniMapGuiSize);
-		glTexCoord2f(1, 0);
-		glVertex2f(miniMapGuiSize, -miniMapGuiSize);
-		glTexCoord2f(0, 0);
-		glVertex2f(-miniMapGuiSize, -miniMapGuiSize);
-	glEnd();
-	texMinimapTop->unbind();
-
-	glBindTexture(GL_TEXTURE_2D, 0);
-
+	drawTexturedQuad(renderer, texMinimapTop, 0, 0, miniMapGuiSize, miniMapGuiSize,
+		1,1,1,1, SDL_BLENDMODE_BLEND);
 
 	const int curHealthSteps = int((lerp.x/2) * healthSteps);
 	const int maxHealthSteps = int((dsq->game->avatar->maxHealth/10.0f) * healthSteps);
@@ -701,34 +612,15 @@ void MiniMapRender::onRender()
 		healthBarColor.normalize2D();
 	}
 
-	texHealthBar->apply();
-
-	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-	glColor4f(healthBarColor.x, healthBarColor.y, healthBarColor.z, 0.6);
-
-	glBegin(GL_QUADS);
 	for (int step = 0; step <= curHealthSteps; step++)
 	{
 		const float x = healthLookupX[step];
 		const float y = healthLookupY[step];
-
-		glTexCoord2f(0, 1);
-		glVertex2f(x-healthBitSizeSmall, y+healthBitSizeSmall);
-		glTexCoord2f(1, 1);
-		glVertex2f(x+healthBitSizeSmall, y+healthBitSizeSmall);
-		glTexCoord2f(1, 0);
-		glVertex2f(x+healthBitSizeSmall, y-healthBitSizeSmall);
-		glTexCoord2f(0, 0);
-		glVertex2f(x-healthBitSizeSmall, y-healthBitSizeSmall);
+		drawTexturedQuad(renderer, texHealthBar, x, y, healthBitSizeSmall, healthBitSizeSmall,
+			healthBarColor.x, healthBarColor.y, healthBarColor.z, 0.6f, SDL_BLENDMODE_BLEND);
 	}
-	glEnd();
-
-
-	glBlendFunc(GL_SRC_ALPHA,GL_ONE);
 
 	int jump = 0;
-
-	glBegin(GL_QUADS);
 	for (int step = 0; step <= curHealthSteps; step++)
 	{
 		if (jump == 0)
@@ -737,51 +629,21 @@ void MiniMapRender::onRender()
 			const float x = healthLookupX[step];
 			const float y = healthLookupY[step];
 
-			glColor4f(healthBarColor.x, healthBarColor.y, healthBarColor.z, fabsf(cosf(angle-incr))*0.3f + 0.2f);
-
-			glTexCoord2f(0, 1);
-			glVertex2f(x-healthBitSizeLarge, y+healthBitSizeLarge);
-			glTexCoord2f(1, 1);
-			glVertex2f(x+healthBitSizeLarge, y+healthBitSizeLarge);
-			glTexCoord2f(1, 0);
-			glVertex2f(x+healthBitSizeLarge, y-healthBitSizeLarge);
-			glTexCoord2f(0, 0);
-			glVertex2f(x-healthBitSizeLarge, y-healthBitSizeLarge);
+			drawTexturedQuad(renderer, texHealthBar, x, y, healthBitSizeLarge, healthBitSizeLarge,
+				healthBarColor.x, healthBarColor.y, healthBarColor.z,
+				fabsf(cosf(angle-incr))*0.3f + 0.2f, SDL_BLENDMODE_ADD);
 		}
 
 		jump++;
 		if (jump > 3)
 			jump = 0;
 	}
-	glEnd();
 
-	texHealthBar->unbind();
-
-	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-	glColor4f(1,1,1,1);
-
-	texMarker->apply();
-
-	const float x = healthLookupX[maxHealthSteps];
-	const float y = healthLookupY[maxHealthSteps];
-
-	glBegin(GL_QUADS);
-		glTexCoord2f(0, 1);
-		glVertex2f(x-healthMarkerSize, y+healthMarkerSize);
-		glTexCoord2f(1, 1);
-		glVertex2f(x+healthMarkerSize, y+healthMarkerSize);
-		glTexCoord2f(1, 0);
-		glVertex2f(x+healthMarkerSize, y-healthMarkerSize);
-		glTexCoord2f(0, 0);
-		glVertex2f(x-healthMarkerSize, y-healthMarkerSize);
-	glEnd();
-
-	texMarker->unbind();
-
-	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-
-	glColor4f(1,1,1,1);
-
-	glBindTexture(GL_TEXTURE_2D, 0);
+	{
+		const float x = healthLookupX[maxHealthSteps];
+		const float y = healthLookupY[maxHealthSteps];
+		drawTexturedQuad(renderer, texMarker, x, y, healthMarkerSize, healthMarkerSize,
+			1,1,1,1, SDL_BLENDMODE_BLEND);
+	}
 }
 

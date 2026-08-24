@@ -51,10 +51,6 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 #include <SDL3/SDL.h>
 
-#define GL_GLEXT_LEGACY 1
-#include "gl.h"
-#include "glext.h"
-
 #define compile_assert(pred) switch(0){case 0:case (pred):;}
 
 #ifdef _MSC_VER
@@ -155,7 +151,6 @@ void initCharTranslationTables(const std::map<unsigned char, unsigned char>& tab
 void stringToUpper(std::string &s);
 void stringToLower(std::string &s);
 void stringToLowerUserData(std::string &s);
-void glColor3_256(int r, int g, int b);
 float sqr(float x);
 bool exists(const std::string &f, bool makeFatal = false, bool skipVFS = false);
 void errorLog(const std::string &s);
@@ -187,8 +182,6 @@ Direction getOppositeDir(Direction dir);
 Direction getNextDirClockwise(Direction dir);
 Vector colorRGB(int r, int g, int b);
 
-GLuint generateEmptyTexture(int res);
-
 //void pForEachFile(std::string path, std::string type, void callback(const std::string &filename, int param), int param);
 
 /*
@@ -202,7 +195,7 @@ std::string pLoadStream(const std::string &filename);
 void pSaveStream(const std::string &filename, std::ostringstream &os);
 */
 
-void drawCircle(float radius, int steps=1);
+void drawCircle(float radius, int steps=1, float r=1, float g=1, float b=1, float a=1);
 bool isVectorInRect(const Vector &vec, const Vector &coord1, const Vector &coord2);
 
 std::string parseCommand(const std::string &line, const std::string &command);

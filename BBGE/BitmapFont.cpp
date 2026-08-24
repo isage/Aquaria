@@ -56,10 +56,7 @@ void BmpFont::load(const std::string &file, float scale, bool loadTexture)
 
 	this->scale = scale;
 
-	GLuint id=0;
-	glGenTextures(1, &id);
-
-	if (!font.Create(file.c_str(), id, loadTexture))
+	if (!font.Create(file.c_str(), 0, loadTexture))
 		return;
 
 	loaded = true;
@@ -313,20 +310,15 @@ void BitmapText::onRender()
 	float top_color[3] = {bmpFont->fontTopColor.x*color.x, bmpFont->fontTopColor.y*color.y, bmpFont->fontTopColor.z*color.z};
 	float bottom_color[3] = {bmpFont->fontBtmColor.x*color.x, bmpFont->fontBtmColor.y*color.y, bmpFont->fontBtmColor.z*color.z};
 
-	glEnable(GL_TEXTURE_2D);
-	/*
-	glEnable(GL_BLEND);
-	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-	*/
-	//glDisable(GL_CULL_FACE);
-
-	//glScalef(1, -1, 0);
-
-	bmpFont->font.Begin();
+	bmpFont->font.Begin(); // no-op now, kept for source compatibility
 
 	if (fontTextureTest) fontTextureTest->apply();
 
 	if (bmpFont->overrideTexture) bmpFont->overrideTexture->apply();
+
+	SDL_Texture *drawTex = 0;
+	if (fontTextureTest) drawTex = fontTextureTest->sdlTexture;
+	else if (bmpFont->overrideTexture) drawTex = bmpFont->overrideTexture->sdlTexture;
 
 	float y=0;
 	float x=0;
@@ -355,7 +347,7 @@ void BitmapText::onRender()
 			debugLog(os.str());
 			*/
 
-			bmpFont->font.DrawString(theLine, bmpFont->scale, x, y, top_color, bottom_color, alpha.x, la);
+			bmpFont->font.DrawString(theLine, bmpFont->scale, x, y, top_color, bottom_color, alpha.x, la, drawTex);
 			y += adj;
 		}
 	}
@@ -370,13 +362,12 @@ void BitmapText::onRender()
 				bmpFont->font.GetStringSize(lines[i], &sz);
 				x = -sz.first*0.5f*bmpFont->scale;
 			}
-			bmpFont->font.DrawString(lines[i], bmpFont->scale, x, y, top_color, bottom_color, alpha.x, 1);
+			bmpFont->font.DrawString(lines[i], bmpFont->scale, x, y, top_color, bottom_color, alpha.x, 1, drawTex);
 			y += adj;
 		}
 	}
 	
 	//glEnable(GL_CULL_FACE);
-	glBindTexture(GL_TEXTURE_2D, 0);
 }
 
 void BitmapText::unloadDevice()

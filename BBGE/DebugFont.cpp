@@ -130,26 +130,18 @@ void DebugFont::setText(const std::string &text)
 
 void DebugFont::onRender()
 {
+	// TODO: needs Core::print
+	return;
+
 	const float vspc = 1.5;
 
 	for (int i = 0; i < lines.size(); i++)
 	{
 		//float width = (lines[i].size()-1) * fontDrawSize * 1.4f * 0.75f;
 		float width = (lines[i].size()) * fontDrawSize * 1.4f * 0.75f;
-		if (align == ALIGN_CENTER)
-		{
-			glTranslatef(-width*0.5f, 0, 0);
-		}
 
-		glColor4f(0,0,0,alpha.x*alphaMod);
 		core->print(1, (i * vspc*fontDrawSize)+1, (char*)(lines[i].c_str()), fontDrawSize);
-		glColor4f(color.x,color.y,color.z,alpha.x*alphaMod);
 		core->print(0, (i * vspc*fontDrawSize), (char*)(lines[i].c_str()), fontDrawSize);
-
-		if (align == ALIGN_CENTER)
-		{
-			glTranslatef(width*0.5f, 0, 0);
-		}
 	}
 }
 

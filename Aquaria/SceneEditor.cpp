@@ -93,52 +93,57 @@ std::string getMapTemplateFilename()
 
 void WarpAreaRender::onRender()
 {
+	SDL_Renderer *renderer = core->getRenderer();
+	if (!renderer) return;
+
 	for (int i = 0; i < dsq->game->warpAreas.size(); i++)
 	{
 		WarpArea *a = &dsq->game->warpAreas[i];
-		glTranslatef(a->position.x, a->position.y,0);
 
+		float r=1,g=1,b=1;
 		if (a->warpAreaType == "Brown")
-			glColor4f(0.5, 0.25, 0, alpha.getValue());
+		{
+			r=0.5f; g=0.25f; b=0;
+		}
 		else
 		{
 			switch (a->warpAreaType[0])
 			{
-			case 'B':
-				glColor4f(0,0,1,alpha.getValue());
-			break;
-			case 'R':
-				glColor4f(1,0,0,alpha.getValue());
-			break;
-			case 'G':
-				glColor4f(0, 1, 0,alpha.getValue());
-			break;
-			case 'Y':
-				glColor4f(1,1,0,alpha.getValue());
-			break;
-			case 'P':
-				glColor4f(1,0,1,alpha.getValue());
-			break;
-			case 'O':
-				glColor4f(1,0.5,0,alpha.getValue());
-			break;
+			case 'B': r=0; g=0; b=1; break;
+			case 'R': r=1; g=0; b=0; break;
+			case 'G': r=0; g=1; b=0; break;
+			case 'Y': r=1; g=1; b=0; break;
+			case 'P': r=1; g=0; b=1; break;
+			case 'O': r=1; g=0.5f; b=0; break;
 			}
 		}
+		float av = alpha.getValue();
+
+		core->transform.pushMatrix();
+		core->transform.translate(a->position.x, a->position.y, 0);
 
 		if (a->radius)
-			drawCircle(a->radius);
+			drawCircle(a->radius, 1, r, g, b, av);
 		else
 		{
-			glBegin(GL_QUADS);
-			{
-				glVertex2f(-a->w,-a->h);
-				glVertex2f(-a->w,a->h);
-				glVertex2f(a->w,a->h);
-				glVertex2f(a->w,-a->h);
-			}
-			glEnd();
+			glm::vec4 p0 = core->transform.transformPoint(-a->w,-a->h);
+			glm::vec4 p1 = core->transform.transformPoint(-a->w, a->h);
+			glm::vec4 p2 = core->transform.transformPoint( a->w, a->h);
+			glm::vec4 p3 = core->transform.transformPoint( a->w,-a->h);
+
+			SDL_FColor col = {r, g, b, av};
+			SDL_Vertex v[4];
+			v[0].position={p0.x,p0.y}; v[0].tex_coord={0,0}; v[0].color=col;
+			v[1].position={p1.x,p1.y}; v[1].tex_coord={0,0}; v[1].color=col;
+			v[2].position={p2.x,p2.y}; v[2].tex_coord={0,0}; v[2].color=col;
+			v[3].position={p3.x,p3.y}; v[3].tex_coord={0,0}; v[3].color=col;
+			static const int idx[6] = {0,1,2,0,2,3};
+
+			SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_BLEND);
+			SDL_RenderGeometry(renderer, NULL, v, 4, idx, 6);
 		}
-		glTranslatef(-a->position.x, -a->position.y,0);
+
+		core->transform.popMatrix();
 	}
 }
 

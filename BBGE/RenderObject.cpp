@@ -29,7 +29,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "glm/gtx/transform.hpp"
 
 bool	RenderObject::renderCollisionShape			= false;
-int		RenderObject::lastTextureApplied			= 0;
+SDL_Texture*	RenderObject::lastTextureApplied			= 0;
 bool	RenderObject::lastTextureRepeat				= false;
 bool	RenderObject::renderPaths					= false;
 
@@ -59,24 +59,22 @@ void RenderObject::applyBlendType()
 {
 	if (blendEnabled)
 	{
-		glEnable(GL_BLEND);
 		switch (blendType)
 		{
 		case BLEND_DEFAULT:
-			glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+			currentBlendMode = SDL_BLENDMODE_BLEND;
 		break;
 		case BLEND_ADD:
-			glBlendFunc(GL_SRC_ALPHA,GL_ONE);
+			currentBlendMode = SDL_BLENDMODE_ADD;
 		break;
 		case BLEND_MULT:
-			glBlendFunc(GL_ZERO, GL_SRC_COLOR);
+			currentBlendMode = SDL_BLENDMODE_MOD;
 		break;
 		}
 	}
 	else
 	{
-		glDisable(GL_BLEND);
-		glDisable(GL_ALPHA_TEST);
+		currentBlendMode = SDL_BLENDMODE_NONE;
 	}
 }
 
@@ -164,6 +162,9 @@ RenderObject::RenderObject()
 	_static = false;
 	fadeAlphaWithLife = false;
 	blendType = BLEND_DEFAULT;
+	currentBlendMode = SDL_BLENDMODE_BLEND;
+	effectiveColor = Vector(1,1,1);
+	effectiveAlpha = 1;
 	//lifeAlphaFadeMultiplier = 1;
 	followCamera = 0;
 	stateData = 0;
@@ -210,8 +211,12 @@ bool RenderObject::isPieceFlippedHorizontal()
 
 Vector RenderObject::getInvRotPosition(const Vector &vec)
 {
-	glPushMatrix();
-	glLoadIdentity();
+	// Pure transform math (like the old Vector::rotate() GL trick) - uses
+	// its own isolated RenderTransformStack rather than core->transform,
+	// matching the original's glLoadIdentity()-from-scratch behavior
+	// (deliberately ignoring whatever the "current" matrix was at the
+	// call site).
+	RenderTransformStack xf;
 
 	std::vector<RenderObject*>chain;
 	RenderObject *p = this;
@@ -223,29 +228,23 @@ Vector RenderObject::getInvRotPosition(const Vector &vec)
 	
 	for (int i = chain.size()-1; i >= 0; i--)
 	{
-		glRotatef(-(chain[i]->rotation.z+chain[i]->rotationOffset.z), 0, 0, 1);
+		xf.rotate(-(chain[i]->rotation.z+chain[i]->rotationOffset.z), 0, 0, 1);
 	
 		if (chain[i]->isfh())
 		{
-			//glDisable(GL_CULL_FACE);
-			glRotatef(180, 0, 1, 0);
+			xf.rotate(180, 0, 1, 0);
 		}
 	}
 
+	glm::vec4 result = xf.transformPoint(0, 0, 0);
+
 	if (vec.x != 0 || vec.y != 0)
 	{
-		//glRotatef(this->rotation.z, 0,0,1,this->rotation.z);
-		glTranslatef(vec.x, vec.y, 0);
+		xf.translate(vec.x, vec.y, 0);
+		result = xf.transformPoint(0, 0, 0);
 	}
 
-	float m[16];
-	glGetFloatv(GL_MODELVIEW_MATRIX, m);
-	float x = m[12];
-	float y = m[13];
-	float z = m[14];
-
-	glPopMatrix();
-	return Vector(x,y,z);
+	return Vector(result.x, result.y, result.z);
 }
 
 static glm::mat4 matrixChain(const RenderObject *ro)
@@ -567,11 +566,7 @@ void RenderObject::renderCall()
 	position += offset;
 
 	if (!RENDEROBJECT_FASTTRANSFORM)
-		glPushMatrix();
-	if (!RENDEROBJECT_SHAREATTRIBUTES)
-	{
-		glPushAttrib(GL_ALL_ATTRIB_BITS);
-	}
+		core->transform.pushMatrix();
 
 	if (!RENDEROBJECT_FASTTRANSFORM)
 	{
@@ -587,94 +582,47 @@ void RenderObject::renderCall()
 		{
 			if (followCamera == 1)
 			{
-			 	glLoadIdentity();
-				glScalef(core->globalResolutionScale.x, core->globalResolutionScale.y,0);
-				glTranslatef(position.x, position.y, position.z);
+			 	core->loadBaseTransform();
+				core->transform.scale(core->globalResolutionScale.x, core->globalResolutionScale.y, 0);
+				core->transform.translate(position.x, position.y, position.z);
 				if (isfh())
 				{
-					//glDisable(GL_CULL_FACE);
-					glRotatef(180, 0, 1, 0);
+					core->transform.rotate(180, 0, 1, 0);
 				}
 
-				glRotatef(rotation.z+rotationOffset.z, 0, 0, 1);
+				core->transform.rotate(rotation.z+rotationOffset.z, 0, 0, 1);
 			}
 			else
 			{
 				Vector pos = getFollowCameraPosition();
 
-				glTranslatef(pos.x, pos.y, pos.z);
+				core->transform.translate(pos.x, pos.y, pos.z);
 				if (isfh())
 				{
-					//glDisable(GL_CULL_FACE);
-					glRotatef(180, 0, 1, 0);
+					core->transform.rotate(180, 0, 1, 0);
 				}
-				glRotatef(rotation.z+rotationOffset.z, 0, 0, 1);
+				core->transform.rotate(rotation.z+rotationOffset.z, 0, 0, 1);
 			}
 		}
 		else
 		{
 
-			glTranslatef(position.x, position.y, position.z);
+			core->transform.translate(position.x, position.y, position.z);
 			if (RenderObject::renderPaths && position.data && position.data->path.getNumPathNodes() > 0)
 			{
-				glLineWidth(4);
-				glEnable(GL_BLEND);
-				
-				int i = 0;
-				glColor4f(1.0f, 1.0f, 1.0f, 0.5f);
-				glBindTexture(GL_TEXTURE_2D, 0);
-
-				glBegin(GL_LINES);
-				for (i = 0; i < position.data->path.getNumPathNodes()-1; i++)
-				{
-					glVertex2f(position.data->path.getPathNode(i)->value.x-position.x, position.data->path.getPathNode(i)->value.y-position.y);
-					glVertex2f(position.data->path.getPathNode(i+1)->value.x-position.x, position.data->path.getPathNode(i+1)->value.y-position.y);
-				}
-				glEnd();
-
-				glPointSize(20);
-				glBegin(GL_POINTS);
-				glColor4f(0.5,0.5,1,1);
-				for (i = 0; i < position.data->path.getNumPathNodes(); i++)
-				{
-					glVertex2f(position.data->path.getPathNode(i)->value.x-position.x, position.data->path.getPathNode(i)->value.y-position.y);
-				}
-				glEnd();
+				// TODO: debug path-visualization overlay (RenderObject::renderPaths, off by default)
 			}
 
-			glRotatef(rotation.z+rotationOffset.z, 0, 0, 1); 
+			core->transform.rotate(rotation.z+rotationOffset.z, 0, 0, 1);
 			if (isfh())
 			{
-				//glDisable(GL_CULL_FACE);
-				glRotatef(180, 0, 1, 0);
+				core->transform.rotate(180, 0, 1, 0);
 			}
 		}
 				
-		glTranslatef(beforeScaleOffset.x, beforeScaleOffset.y, beforeScaleOffset.z);
-		glScalef(scale.x, scale.y, 1);
-		glTranslatef(internalOffset.x, internalOffset.y, internalOffset.z);
-		//glDisable(GL_CULL_FACE);
-		/* Never set anywhere.  --achurch
-		if (renderOrigin)
-		{
-			  glBegin(GL_TRIANGLES);
-				glColor4f(1.0f, 0.0f, 0.0f, 1.0f);
-				glVertex3f(0.0f, 5.0f, 0.0f);
-				glVertex3f(50.0f, 0.0f, 0.0f);
-				glVertex3f(0.0f, -5.0f, 0.0f);
-
-				glColor4f(0.0f, 1.0f, 0.0f, 1.0f);
-				glVertex3f(0.0f, 0.0f, 5.0f);
-				glVertex3f(0.0f, 50.0f, 0.0f);
-				glVertex3f(0.0f, 0.0f, -5.0f);
-
-				glColor4f(0.0f, 0.0f, 1.0f, 1.0f);
-				glVertex3f(5.0f, 0.0f, 0.0f);
-				glVertex3f(0.0f, 0.0f, 50.0f);
-				glVertex3f(-5.0f, 0.0f, 0.0f);
-			glEnd();
-		}
-		*/
+		core->transform.translate(beforeScaleOffset.x, beforeScaleOffset.y, beforeScaleOffset.z);
+		core->transform.scale(scale.x, scale.y, 1);
+		core->transform.translate(internalOffset.x, internalOffset.y, internalOffset.z);
 	}
 
 	for (Children::iterator i = children.begin(); i != children.end(); i++)
@@ -687,26 +635,31 @@ void RenderObject::renderCall()
 	//if (useColor)
 	{
 		if (rlayer)
-			glColor4f(color.x * rlayer->color.x, color.y * rlayer->color.y, color.z * rlayer->color.z, alpha.x*alphaMod);
+		{
+			effectiveColor = Vector(color.x * rlayer->color.x, color.y * rlayer->color.y, color.z * rlayer->color.z);
+			effectiveAlpha = alpha.x*alphaMod;
+		}
 		else
-			glColor4f(color.x, color.y, color.z, alpha.x*alphaMod);
+		{
+			effectiveColor = Vector(color.x, color.y, color.z);
+			effectiveAlpha = alpha.x*alphaMod;
+		}
 	}
 	
 	if (texture)
 	{
 
-		if (texture->textures[0] != lastTextureApplied || repeatTexture != lastTextureRepeat)
+		if (texture->sdlTexture != lastTextureApplied || repeatTexture != lastTextureRepeat)
 		{
 			texture->apply(repeatTexture);
 			lastTextureRepeat = repeatTexture;
-			lastTextureApplied = texture->textures[0];
+			lastTextureApplied = texture->sdlTexture;
 		}
 	}
 	else
 	{
 		if (lastTextureApplied != 0 || repeatTexture != lastTextureRepeat)
 		{
-			glBindTexture(GL_TEXTURE_2D, 0);
 			lastTextureApplied = 0;
 			lastTextureRepeat = repeatTexture;
 		}
@@ -735,12 +688,6 @@ void RenderObject::renderCall()
 	if (doRender)
 		onRender();
 
-		//collisionShape.render();
-	if (!RENDEROBJECT_SHAREATTRIBUTES)
-	{
-		glPopAttrib();
-	}
-
 	for (Children::iterator i = children.begin(); i != children.end(); i++)
 	{
 		if (!(*i)->isDead() && !(*i)->renderBeforeParent)
@@ -750,7 +697,7 @@ void RenderObject::renderCall()
 
 	if (!RENDEROBJECT_FASTTRANSFORM)
 	{
-		glPopMatrix();
+		core->transform.popMatrix();
 	}
 
 
@@ -759,109 +706,71 @@ void RenderObject::renderCall()
 
 void RenderObject::renderCollision()
 {
+	SDL_Renderer *renderer = core->getRenderer();
+	if (!renderer) return;
+
 	if (!collisionRects.empty())
 	{
-		glPushAttrib(GL_ALL_ATTRIB_BITS);
-		glPushMatrix();
-		glBindTexture(GL_TEXTURE_2D, 0);
-
-		//glLoadIdentity();
-		//core->setupRenderPositionAndScale();
-		
-		glEnable(GL_BLEND);
-		glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-		glColor4f(1.0f, 0.5f, 1.0f, 0.5f);
-		glPointSize(5);
+		SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_BLEND);
+		SDL_SetRenderDrawColorFloat(renderer, 1.0f, 0.5f, 1.0f, 0.5f);
 
 		for (int i = 0; i < collisionRects.size(); i++)
 		{
 			RectShape *r = &collisionRects[i];
 
-			glBegin(GL_QUADS);
-				glVertex3f(r->x1, r->y1, 0);
-				glVertex3f(r->x1, r->y2, 0);
-				glVertex3f(r->x2, r->y2, 0);
-				glVertex3f(r->x2, r->y1, 0);
-			glEnd();
-			glBegin(GL_POINTS);
-				glVertex3f(r->x1, r->y1, 0);
-				glVertex3f(r->x1, r->y2, 0);
-				glVertex3f(r->x2, r->y2, 0);
-				glVertex3f(r->x2, r->y1, 0);
-			glEnd();
+			glm::vec4 p0 = core->transform.transformPoint(r->x1, r->y1);
+			glm::vec4 p1 = core->transform.transformPoint(r->x1, r->y2);
+			glm::vec4 p2 = core->transform.transformPoint(r->x2, r->y2);
+			glm::vec4 p3 = core->transform.transformPoint(r->x2, r->y1);
+
+			SDL_FColor col = {1.0f, 0.5f, 1.0f, 0.5f};
+			SDL_Vertex v[4];
+			v[0].position={p0.x,p0.y}; v[0].tex_coord={0,0}; v[0].color=col;
+			v[1].position={p1.x,p1.y}; v[1].tex_coord={0,0}; v[1].color=col;
+			v[2].position={p2.x,p2.y}; v[2].tex_coord={0,0}; v[2].color=col;
+			v[3].position={p3.x,p3.y}; v[3].tex_coord={0,0}; v[3].color=col;
+			static const int idx[6] = {0,1,2,0,2,3};
+			SDL_RenderGeometry(renderer, NULL, v, 4, idx, 6);
+
+			// TODO: the 4 corner points (glPointSize(5)) have no direct SDL_RenderGeometry equivalent
 		}
-
-		glPopMatrix();
-		glDisable(GL_BLEND);
-
-		glPopAttrib();
 	}
 
 	if (!collisionMask.empty())
 	{
-		glPushAttrib(GL_ALL_ATTRIB_BITS);
-		glPushMatrix();
-		glBindTexture(GL_TEXTURE_2D, 0);
-		
-		/*
-		glTranslatef(-offset.x, -offset.y,0);		
-		glTranslatef(collidePosition.x, collidePosition.y,0);
-		*/
-		
-		
-		glLoadIdentity();
+		core->transform.pushMatrix();
+		core->loadBaseTransform();
 		core->setupRenderPositionAndScale();
-		
 
-		glEnable(GL_BLEND);
-		glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-
-		glColor4f(1,1,0,0.5);
+		SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_BLEND);
 
 		for (int i = 0; i < transformedCollisionMask.size(); i++)
-			{
+		{
 			Vector collide = this->transformedCollisionMask[i];
-			//Vector collide = getWorldCollidePosition(collisionMask[i]);
-			//Vector collide = collisionMask[i];
-			/*
-			if (isPieceFlippedHorizontal())
-			{
-				collide.x = -collide.x;
-			}
-			*/
-			glTranslatef(collide.x, collide.y, 0);
 			RenderObject *parent = this->getTopParent();
 			if (parent)
-				drawCircle(collideRadius*parent->scale.x, 45);
-			glTranslatef(-collide.x, -collide.y, 0);
+			{
+				core->transform.pushMatrix();
+				core->transform.translate(collide.x, collide.y, 0);
+				drawCircle(collideRadius*parent->scale.x, 45, 1, 1, 0, 0.5f);
+				core->transform.popMatrix();
+			}
 		}
-		
-		//glTranslatef(-collidePosition.x, -collidePosition.y,0);
-		glDisable(GL_BLEND);
-		glPopMatrix();
-		glPopAttrib();
 
-		//glTranslatef(offset.x, offset.y,0);
+		core->transform.popMatrix();
 	}
 	else if (collideRadius > 0)
 	{
-		glPushMatrix();
-		glLoadIdentity();
+		core->transform.pushMatrix();
+		core->loadBaseTransform();
 		core->setupRenderPositionAndScale();
-		glBindTexture(GL_TEXTURE_2D, 0);
-		glTranslatef(position.x+offset.x, position.y+offset.y, 0);
-		//glScalef(scale.x, scale.y, 0);
-		glTranslatef(internalOffset.x, internalOffset.y, 0);
-		glEnable(GL_BLEND);
-		//glTranslatef(collidePosition.x, collidePosition.y,0);
-		//glEnable(GL_ALPHA_TEST);
-		//glAlphaFunc(GL_GREATER, 0);
-		glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-		glColor4f(1,0,0,0.5);
-		drawCircle(collideRadius, 8);
-		glDisable(GL_BLEND);
-		glTranslatef(offset.x, offset.y,0);
-		glPopMatrix();
+		core->transform.translate(position.x+offset.x, position.y+offset.y, 0);
+		core->transform.translate(internalOffset.x, internalOffset.y, 0);
+
+		SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_BLEND);
+		drawCircle(collideRadius, 8, 1, 0, 0, 0.5f);
+
+		core->transform.popMatrix();
 	}
 }
 

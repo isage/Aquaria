@@ -141,7 +141,6 @@
 #       pragma message("CLANG")
 #       define GLM_COMPILER_GCC_EXTRA GLM_COMPILER_GCC_CLANG
 #   else
-#       pragma message("GCC")
 #       define GLM_COMPILER_GCC_EXTRA 0
 #   endif
 #

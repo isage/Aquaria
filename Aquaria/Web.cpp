@@ -22,6 +22,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "DSQ.h"
 #include "Game.h"
 #include "Avatar.h"
+#include <vector>
 
 Web::Webs Web::webs;
 
@@ -153,22 +154,18 @@ void Web::onUpdate(float dt)
 
 void Web::onRender()
 {
-	glBindTexture(GL_TEXTURE_2D, 0);
-	//glDisable(GL_BLEND);
-	
-	glLineWidth(4);
-	//glDisable(GL_CULL_FACE);
-	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+	SDL_Renderer *renderer = core->getRenderer();
+	if (!renderer || points.size() < 2) return;
 
-	glBegin(GL_LINES);
-	for (int i = 0; i < points.size()-1; i++)
-	{		
-		
-		glColor4f(1, 1, 1, 0.5f*alpha.x);
-		glVertex3f(points[i].x, points[i].y, 0);
-		glColor4f(1, 1, 1, 0.5f*alpha.x);
-		glVertex3f(points[i+1].x, points[i+1].y, 0);
-		
+	SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_BLEND);
+	SDL_SetRenderDrawColorFloat(renderer, 1, 1, 1, 0.5f*alpha.x);
+
+	std::vector<SDL_FPoint> pts;
+	pts.reserve(points.size());
+	for (int i = 0; i < points.size(); i++)
+	{
+		glm::vec4 wp = core->transform.transformPoint(points[i].x, points[i].y);
+		pts.push_back({wp.x, wp.y});
 	}
-	glEnd();
+	SDL_RenderLines(renderer, pts.data(), (int)pts.size());
 }

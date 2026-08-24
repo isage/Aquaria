@@ -23,6 +23,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "TTFFont.h"
 
 #include <assert.h>
+#include <vector>
 
 RoundedRect *RoundedRect::moving=0;
 
@@ -102,72 +103,74 @@ void RoundedRect::onUpdate(float dt)
 
 void RoundedRect::onRender()
 {
-	//glBindTexture(GL_TEXTURE_2D, 0);
 	int w2 = width/2;
 	int h2 = height/2;
-	//glDisable(GL_CULL_FACE);
 	float iter = 0.1f;
 
-	glBegin(GL_QUADS);
+	SDL_Renderer *renderer = core->getRenderer();
+	if (!renderer) return;
+
+	std::vector<SDL_Vertex> verts;
+	std::vector<int> indices;
+	SDL_FColor col = {effectiveColor.x, effectiveColor.y, effectiveColor.z, effectiveAlpha};
+
+	// helper: push one quad (4 local-space corners, already in the same
+	// vertex order the old glBegin(GL_QUADS) block used) as 2 triangles.
+	auto pushQuad = [&](float x0, float y0, float x1, float y1, float x2, float y2, float x3, float y3)
+	{
+		glm::vec4 p0 = core->transform.transformPoint(x0, y0);
+		glm::vec4 p1 = core->transform.transformPoint(x1, y1);
+		glm::vec4 p2 = core->transform.transformPoint(x2, y2);
+		glm::vec4 p3 = core->transform.transformPoint(x3, y3);
+		int base = (int)verts.size();
+		SDL_Vertex v;
+		v.color = col;
+		v.position = {p0.x, p0.y}; verts.push_back(v);
+		v.position = {p1.x, p1.y}; verts.push_back(v);
+		v.position = {p2.x, p2.y}; verts.push_back(v);
+		v.position = {p3.x, p3.y}; verts.push_back(v);
+		indices.push_back(base+0); indices.push_back(base+1); indices.push_back(base+2);
+		indices.push_back(base+0); indices.push_back(base+2); indices.push_back(base+3);
+	};
+
 	for (float angle = 0; angle < PI_HALF - iter; angle+=iter)
 	{
 		// top right
 		{
 			float x1 = sinf(angle)*radius, y1 = -cosf(angle)*radius;
 			float x2 = sinf(angle+iter)*radius, y2 = -cosf(angle+iter)*radius;
-			glVertex3f(w2 + x1, -h2 + y1, 0);
-			glVertex3f(w2 + x2, -h2 + y2, 0);
-			glVertex3f(w2 + x2, -h2 + 0, 0);
-			glVertex3f(w2 + x1, -h2 + 0, 0);
+			pushQuad(w2 + x1, -h2 + y1,  w2 + x2, -h2 + y2,  w2 + x2, -h2 + 0,  w2 + x1, -h2 + 0);
 		}
 		// top left
 		{
 			float x1 = -sinf(angle)*radius, y1 = -cosf(angle)*radius;
 			float x2 = -sinf(angle+iter)*radius, y2 = -cosf(angle+iter)*radius;
-			glVertex3f(-w2 + x1, -h2 + y1, 0);
-			glVertex3f(-w2 + x2, -h2 + y2, 0);
-			glVertex3f(-w2 + x2, -h2 + 0, 0);
-			glVertex3f(-w2 + x1, -h2 + 0, 0);
+			pushQuad(-w2 + x1, -h2 + y1,  -w2 + x2, -h2 + y2,  -w2 + x2, -h2 + 0,  -w2 + x1, -h2 + 0);
 		}
 		{
 			float x1 = sinf(angle)*radius, y1 = cosf(angle)*radius;
 			float x2 = sinf(angle+iter)*radius, y2 = cosf(angle+iter)*radius;
-			glVertex3f(w2 + x1, h2 + y1, 0);
-			glVertex3f(w2 + x2, h2 + y2, 0);
-			glVertex3f(w2 + x2, h2 + 0, 0);
-			glVertex3f(w2 + x1, h2 + 0, 0);
+			pushQuad(w2 + x1, h2 + y1,  w2 + x2, h2 + y2,  w2 + x2, h2 + 0,  w2 + x1, h2 + 0);
 		}
 		{
 			float x1 = -sinf(angle)*radius, y1 = cosf(angle)*radius;
 			float x2 = -sinf(angle+iter)*radius, y2 = cosf(angle+iter)*radius;
-			glVertex3f(-w2 + x1, h2 + y1, 0);
-			glVertex3f(-w2 + x2, h2 + y2, 0);
-			glVertex3f(-w2 + x2, h2 + 0, 0);
-			glVertex3f(-w2 + x1, h2 + 0, 0);
+			pushQuad(-w2 + x1, h2 + y1,  -w2 + x2, h2 + y2,  -w2 + x2, h2 + 0,  -w2 + x1, h2 + 0);
 		}
 	}
-	
+
 	//middle, top, btm
-	glVertex3f(-w2, -h2 - radius, 0);
-	glVertex3f(w2, -h2 - radius, 0);
-	glVertex3f(w2, h2 + radius, 0);
-	glVertex3f(-w2, h2 + radius, 0);
+	pushQuad(-w2, -h2 - radius,  w2, -h2 - radius,  w2, h2 + radius,  -w2, h2 + radius);
+	// left
+	pushQuad(-w2 - radius, -h2,  -w2, -h2,  -w2, h2,  -w2 - radius, h2);
+	// right
+	pushQuad(w2 + radius, -h2,  w2, -h2,  w2, h2,  w2 + radius, h2);
 
-	// left 
-	glVertex3f(-w2 - radius, -h2, 0);
-	glVertex3f(-w2, -h2, 0);
-	glVertex3f(-w2, h2, 0);
-	glVertex3f(-w2 - radius, h2, 0);
-
-	// right 
-	glVertex3f(w2 + radius, -h2, 0);
-	glVertex3f(w2, -h2, 0);
-	glVertex3f(w2, h2, 0);
-	glVertex3f(w2 + radius, h2, 0);
-
-	glEnd();
-
-	//glEnable(GL_CULL_FACE);
+	if (!verts.empty())
+	{
+		SDL_SetRenderDrawBlendMode(renderer, currentBlendMode);
+		SDL_RenderGeometry(renderer, NULL, verts.data(), (int)verts.size(), indices.data(), (int)indices.size());
+	}
 }
 
 void RoundedRect::show()
@@ -259,31 +262,30 @@ void RoundButton::onUpdate(float dt)
 void RoundButton::onRender()
 {
 	int w2 = width/2, h2 = height/2;
-	glLineWidth(1);
 
-	glBegin(GL_LINES);
-	glVertex3f(-w2, -h2, 0);
-	glVertex3f(w2, -h2, 0);
+	SDL_Renderer *renderer = core->getRenderer();
+	if (!renderer) return;
 
-	glVertex3f(w2, -h2, 0);
-	glVertex3f(w2, h2, 0);
+	glm::vec4 ul = core->transform.transformPoint(-w2, -h2);
+	glm::vec4 ur = core->transform.transformPoint( w2, -h2);
+	glm::vec4 lr = core->transform.transformPoint( w2,  h2);
+	glm::vec4 ll = core->transform.transformPoint(-w2,  h2);
 
-	glVertex3f(w2, h2, 0);
-	glVertex3f(-w2, h2, 0);
-
-	glVertex3f(-w2, h2, 0);
-	glVertex3f(-w2, -h2, 0);
-	glEnd();
+	SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_BLEND);
+	SDL_SetRenderDrawColorFloat(renderer, effectiveColor.x, effectiveColor.y, effectiveColor.z, effectiveAlpha);
+	SDL_FPoint pts[5] = {{ul.x,ul.y}, {ur.x,ur.y}, {lr.x,lr.y}, {ll.x,ll.y}, {ul.x,ul.y}};
+	SDL_RenderLines(renderer, pts, 5);
 
 	if (mbd)
 	{
-		glColor4f(1,1,1,0.5);
-		glBegin(GL_QUADS);
-		glVertex3f(-w2, h2, 0);
-		glVertex3f(w2, h2, 0);
-		glVertex3f(w2, -h2, 0);
-		glVertex3f(-w2, -h2, 0);
-		glEnd();
+		SDL_Vertex v[4];
+		v[0].position = {ll.x, ll.y};
+		v[1].position = {lr.x, lr.y};
+		v[2].position = {ur.x, ur.y};
+		v[3].position = {ul.x, ul.y};
+		v[0].color = v[1].color = v[2].color = v[3].color = {1,1,1,0.5f};
+		static const int idx[6] = {0,1,2,0,2,3};
+		SDL_RenderGeometry(renderer, NULL, v, 4, idx, 6);
 	}
 }
 

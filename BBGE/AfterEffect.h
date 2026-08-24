@@ -87,8 +87,7 @@ public:
 	void resetGrid();
 
 	void render();
-	void renderGrid();
-	void renderGridPoints();
+	void renderGrid(const RenderTransformStack &xf);
 
 	void unloadDevice();
 	void reloadDevice();

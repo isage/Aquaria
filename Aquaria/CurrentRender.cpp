@@ -60,259 +60,89 @@ void CurrentRender::onUpdate(float dt)
 
 void CurrentRender::onRender()
 {
-	// note: Leave cull_face disabled!?
-	//glDisable(GL_CULL_FACE);
-	//int qs = 0;
+	SDL_Renderer *renderer = core->getRenderer();
+	if (!renderer) return;
+	SDL_Texture *tex = texture ? texture->sdlTexture : 0;
+
 	for (Path *p = dsq->game->getFirstPathOfType(PATH_CURRENT); p; p = p->nextOfType)
 	{
 		if (p->active)
 		{
-
-			/*
-			std::ostringstream os;
-			os << "animOffset: " << p->animOffset;
-			debugLog(os.str());
-			*/
-
 			int w2 = p->rect.getWidth()/2;
 
-			/*
-			if (false)
+			int sz = p->nodes.size()-1;
+			for (int n = 0; n < sz; n++)
 			{
-				float offset = 0;
-				glBegin(GL_QUAD_STRIP);
-				int sz = p->nodes.size();
-				float len = 0;
+				PathNode *n1 = &p->nodes[n];
+				PathNode *n2 = &p->nodes[n+1];
+				Vector p1 = n1->position;
+				Vector p2 = n2->position;
+				Vector diff = p2-p1;
+				Vector d = diff;
+				d.setLength2D(p->rect.getWidth());
+				p1 -= d*0.75f;
+				p2 += d*0.75f;
+				diff = p2 - p1;
 
-
-				float totalLength = 0;
-				for (int n = 0; n < sz-1; n++)
+				if (!diff.isZero())
 				{
-					totalLength += (p->nodes[n+1].position - p->nodes[n].position).getLength2D();
-				}
-
-				float texScale = totalLength/256.0f;
-
-				Vector p1, p2, diff, pl, pr;
-				for (int n = 0; n < sz; n++)
-				{
-					PathNode *n1 = &p->nodes[n];
-					p1 = n1->position;
-					if (n == sz-1)
-					{
-						PathNode *n2 = &p->nodes[n-1];
-						p2 = n2->position;
-						diff = p1-p2;
-					}
-					else
-					{
-						PathNode *n2 = &p->nodes[n+1];
-						p2 = n2->position;
-						diff = p2-p1;
-					}
-					len = diff.getLength2D();
-					float add = len/totalLength;
-					//texScale = len/totalLength;
-
-					pl = diff.getPerpendicularLeft();
-					pr = diff.getPerpendicularRight();
-
-					pl.setLength2D(w2);
-					pr.setLength2D(w2);
-					Vector r1 = p1+pl;
-
-					Vector r4 = p1+pr;
-
-
-					if (n == 0 || n == sz-1)
-					{
-						glColor4f(1, 1, 1, 0);
-					}
-					else
-					{
-						glColor4f(1, 1, 1, 1);
-					}
-					//(0+p->animOffset)*texScale +
-					glTexCoord2f((offset)*texScale+p->animOffset, 0);
-					glVertex2f(r1.x, r1.y);
-
-					glTexCoord2f((offset)*texScale+p->animOffset, 1);
-					//(0+p->animOffset)*texScale +
-					glVertex2f(r4.x, r4.y);
-
-					offset += add;
-
-				}
-				glEnd();
-			}
-			else
-			*/
-
-			if (true)
-			{
-				int sz = p->nodes.size()-1;
-				for (int n = 0; n < sz; n++)
-				{
-					PathNode *n1 = &p->nodes[n];
-					PathNode *n2 = &p->nodes[n+1];
-					Vector p1 = n1->position;
-					Vector p2 = n2->position;
-					Vector diff = p2-p1;
-					Vector d = diff;
-					d.setLength2D(p->rect.getWidth());
-					p1 -= d*0.75f;
-					p2 += d*0.75f;
-					diff = p2 - p1;
-
-					//bool edge = false;
-
-					/*
-					if (n == 0)
-					{
-						p1 -= diff*0.25f;
-						edge = true;
-					}
-
-					if (n == sz-1)
-					{
-						p2 += diff*0.25f;
-						edge = true;
-					}
-
-					diff = p2-p1;
-					*/
-
-					if (!diff.isZero())
-					{
-						Vector pl = diff.getPerpendicularLeft();
-						Vector pr = diff.getPerpendicularRight();
-						pl.setLength2D(w2);
-						pr.setLength2D(w2);
-
-						Vector p15 = p1 + diff * 0.25f;
-						Vector p25 = p2 - diff * 0.25f;
-						Vector r1 = p1+pl;
-						Vector r2 = p1+pr;
-						Vector r3 = p15+pl;
-						Vector r4 = p15+pr;
-						Vector r5 = p25+pl;
-						Vector r6 = p25+pr;
-						Vector r7 = p2+pl;
-						Vector r8 = p2+pr;
-						float len = diff.getLength2D();
-						float texScale = len/256.0f;
-						//float texScale2 = texScale;
-
-						/*
-						if (edge)
-							texScale *= 2;
-						*/
-
-						/*
-						if (edge)
-							texScale2 *= 4;
-						*/
-
-						if (isTouchingLine(p1, p2, dsq->screenCenter, dsq->cullRadius+p->rect.getWidth()/2.0f))
-						{
-							//qs++;
-
-							glBegin(GL_QUAD_STRIP);
-								glColor4f(1,1,1,0);
-								glTexCoord2f((0)*texScale+p->animOffset, 0);
-								glVertex2f(r1.x, r1.y);
-
-								glTexCoord2f((0)*texScale+p->animOffset, 1);
-								glVertex2f(r2.x, r2.y);
-
-								glColor4f(1,1,1,p->amount);
-								glTexCoord2f((0+0.25f)*texScale+p->animOffset, 0);
-								glVertex2f(r3.x, r3.y);
-
-								glTexCoord2f((0+0.25f)*texScale+p->animOffset, 1);
-								glVertex2f(r4.x, r4.y);
-
-								glColor4f(1,1,1,p->amount);
-								glTexCoord2f((1-0.25f)*texScale+p->animOffset, 0);
-								glVertex2f(r5.x, r5.y);
-
-								glTexCoord2f((1-0.25f)*texScale+p->animOffset, 1);
-								glVertex2f(r6.x, r6.y);
-
-								glColor4f(1,1,1,0);
-								glTexCoord2f((1)*texScale+p->animOffset, 0);
-								glVertex2f(r7.x, r7.y);
-
-								glTexCoord2f((1)*texScale+p->animOffset, 1);
-								glVertex2f(r8.x, r8.y);
-							glEnd();
-						}
-					}
-				}
-			}
-			else
-			{
-				int sz = p->nodes.size()-1;
-				for (int n = 0; n < sz; n++)
-				{
-					PathNode *n1 = &p->nodes[n];
-					PathNode *n2 = &p->nodes[n+1];
-					Vector p1 = n1->position;
-					Vector p2 = n2->position;
-					Vector diff = p2-p1;
 					Vector pl = diff.getPerpendicularLeft();
 					Vector pr = diff.getPerpendicularRight();
 					pl.setLength2D(w2);
 					pr.setLength2D(w2);
+
+					Vector p15 = p1 + diff * 0.25f;
+					Vector p25 = p2 - diff * 0.25f;
 					Vector r1 = p1+pl;
-					Vector r2 = p2+pl;
-					Vector r3 = p2+pr;
-					Vector r4 = p1+pr;
+					Vector r2 = p1+pr;
+					Vector r3 = p15+pl;
+					Vector r4 = p15+pr;
+					Vector r5 = p25+pl;
+					Vector r6 = p25+pr;
+					Vector r7 = p2+pl;
+					Vector r8 = p2+pr;
 					float len = diff.getLength2D();
 					float texScale = len/256.0f;
 
-					if (isTouchingLine(p1, p2, dsq->screenCenter, dsq->cullRadius))
+					if (isTouchingLine(p1, p2, dsq->screenCenter, dsq->cullRadius+p->rect.getWidth()/2.0f))
 					{
-						//qs++;
-						glBegin(GL_QUADS);
-							if (n==0)
-								glColor4f(1,1,1,0);
-							else
-								glColor4f(1,1,1,alpha.x);
-							glTexCoord2f((0+p->animOffset)*texScale, 0);
-							glVertex2f(r1.x, r1.y);
+						// GL_QUAD_STRIP (r1,r2, r3,r4, r5,r6, r7,r8) with
+						// per-vertex alpha fading the ends to 0 -> 3 quads,
+						// 6 triangles, one batched draw.
+						Vector pts[8] = {r1,r2,r3,r4,r5,r6,r7,r8};
+						float u[4] = {
+							(0)*texScale+p->animOffset,
+							(0+0.25f)*texScale+p->animOffset,
+							(1-0.25f)*texScale+p->animOffset,
+							(1)*texScale+p->animOffset
+						};
+						float a[4] = {0, p->amount, p->amount, 0};
 
-							if (n==sz-1)
-								glColor4f(1,1,1,0);
-							else
-								glColor4f(1,1,1,alpha.x);
+						SDL_Vertex verts[8];
+						for (int i = 0; i < 4; i++)
+						{
+							glm::vec4 wl = core->transform.transformPoint(pts[i*2].x, pts[i*2].y);
+							glm::vec4 wr = core->transform.transformPoint(pts[i*2+1].x, pts[i*2+1].y);
+							SDL_FColor col = {1,1,1,a[i]};
+							verts[i*2+0].position={wl.x,wl.y}; verts[i*2+0].tex_coord={u[i],0}; verts[i*2+0].color=col;
+							verts[i*2+1].position={wr.x,wr.y}; verts[i*2+1].tex_coord={u[i],1}; verts[i*2+1].color=col;
+						}
 
-							glTexCoord2f((1+p->animOffset)*texScale, 0);
-							glVertex2f(r2.x, r2.y);
+						static const int idx[18] = {
+							0,1,3, 0,3,2,
+							2,3,5, 2,5,4,
+							4,5,7, 4,7,6
+						};
 
-							glTexCoord2f((1+p->animOffset)*texScale, 1);
-							glVertex2f(r3.x, r3.y);
-
-							if (n==0)
-								glColor4f(1,1,1,0);
-							else
-								glColor4f(1,1,1,alpha.x);
-							glTexCoord2f((0+p->animOffset)*texScale, 1);
-							glVertex2f(r4.x, r4.y);
-						glEnd();
+						if (tex)
+							SDL_SetTextureBlendMode(tex, currentBlendMode);
+						else
+							SDL_SetRenderDrawBlendMode(renderer, currentBlendMode);
+						SDL_RenderGeometry(renderer, tex, verts, 8, idx, 18);
 					}
 				}
 			}
 		}
-		//glEnd();
-
 	}
-	//glEnable(GL_CULL_FACE);
-
-	/*
-	std::ostringstream os;
-	os << "current quads: " << qs;
-	debugLog(os.str());
-	*/
 }
 

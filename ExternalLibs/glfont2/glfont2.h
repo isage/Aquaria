@@ -9,6 +9,10 @@
 #define GLFONT2_H
 
 #include <assert.h>
+#include <vector>
+#include <SDL3/SDL.h>
+#include <glm/glm.hpp>
+#include "Core.h"
 
 //*******************************************************************
 //GLFont Interface
@@ -36,7 +40,8 @@ private:
 	//glFont header structure
 	struct
 	{
-		unsigned int tex;
+		unsigned int tex; // legacy GL texture id field, no longer set/used
+		SDL_Texture *sdlTex;
 		unsigned int tex_width, tex_height;
 		unsigned int start_char, end_char;
 		GLFontChar *chars;
@@ -63,6 +68,7 @@ public:
 	void GetTexSize (std::pair<int, int> *size);
 	int GetTexWidth (void);
 	int GetTexHeight (void);
+	SDL_Texture *GetSDLTexture (void) { return header.sdlTex; }
 
 	//Character interval retrieval methods
 	void GetCharInterval (std::pair<int, int> *interval);
@@ -83,16 +89,37 @@ public:
 	//Template function to output a scaled, colored std::basic_string
 	template<class T> void DrawString (
 		const std::basic_string<T> &text, float scalar, float x,
-		float y, const float *top_color, const float *bottom_color, float alpha, float lastAlpha)
+		float y, const float *top_color, const float *bottom_color, float alpha, float lastAlpha,
+		SDL_Texture *textureOverride = 0)
 	{
 		unsigned int i;
 		GLFontChar *glfont_char;
 		float width, height;
-		
-		//Begin rendering quads
-		glBegin(GL_QUADS);
-		
+
+		SDL_Renderer *renderer = core->getRenderer();
+		if (!renderer) return;
+
+		// TEMPORARY-note-turned-permanent-fix: BmpFont instances are
+		// always loaded with loadTexture=false and supply the real font
+		// atlas via BmpFont::overrideTexture instead (see
+		// DSQ::loadFonts()) - the old GL code got this "for free" via
+		// glBindTexture()'s global state (Texture::apply() bound the
+		// override texture just before DrawString()'s own glBegin/
+		// glTexCoord calls implicitly sampled it). SDL_RenderGeometry
+		// needs the texture explicitly, so the caller
+		// (BitmapText::onRender()) passes it through here - same pattern
+		// as Quad::textureOverride.
+		SDL_Texture *tex = textureOverride ? textureOverride : header.sdlTex;
+
 		unsigned int sz = text.size();
+		if (sz == 0) return;
+
+		// One batched draw for the whole string (was one glBegin(GL_QUADS)
+		// block per string, 4 immediate-mode vertices per character).
+		std::vector<SDL_Vertex> verts;
+		std::vector<int> indices;
+		verts.reserve((size_t)sz * 4);
+		indices.reserve((size_t)sz * 6);
 
 		float a = 0;
 		//Loop through characters
@@ -115,24 +142,36 @@ public:
 			else
 				a = alpha;
 
-			//Specify colors, vertices, and texture coordinates
-			glColor4f(top_color[0], top_color[1], top_color[2], a);
-			glTexCoord2f(glfont_char->tx1, glfont_char->ty1);
-			glVertex3f(x, y, 0.0F);
-			glTexCoord2f(glfont_char->tx2, glfont_char->ty1);
-			glVertex3f(x + width, y, 0.0F);
-			glColor4f(bottom_color[0], bottom_color[1], bottom_color[2], a);
-			glTexCoord2f(glfont_char->tx2, glfont_char->ty2);
-			glVertex3f(x + width, y + height, 0.0F);
-			glTexCoord2f(glfont_char->tx1, glfont_char->ty2);
-			glVertex3f(x, y + height, 0.0F);
-		
+			glm::vec4 p0 = core->transform.transformPoint(x, y);
+			glm::vec4 p1 = core->transform.transformPoint(x + width, y);
+			glm::vec4 p2 = core->transform.transformPoint(x + width, y + height);
+			glm::vec4 p3 = core->transform.transformPoint(x, y + height);
+
+			SDL_FColor topCol = {top_color[0], top_color[1], top_color[2], a};
+			SDL_FColor btmCol = {bottom_color[0], bottom_color[1], bottom_color[2], a};
+
+			int base = (int)verts.size();
+			SDL_Vertex v;
+			v.position = {p0.x, p0.y}; v.tex_coord = {glfont_char->tx1, glfont_char->ty1}; v.color = topCol; verts.push_back(v);
+			v.position = {p1.x, p1.y}; v.tex_coord = {glfont_char->tx2, glfont_char->ty1}; v.color = topCol; verts.push_back(v);
+			v.position = {p2.x, p2.y}; v.tex_coord = {glfont_char->tx2, glfont_char->ty2}; v.color = btmCol; verts.push_back(v);
+			v.position = {p3.x, p3.y}; v.tex_coord = {glfont_char->tx1, glfont_char->ty2}; v.color = btmCol; verts.push_back(v);
+
+			indices.push_back(base+0); indices.push_back(base+1); indices.push_back(base+2);
+			indices.push_back(base+0); indices.push_back(base+2); indices.push_back(base+3);
+
 			//Move to next character
 			x += width;
 		}
 
-		//Stop rendering quads
-		glEnd();
+		if (!verts.empty())
+		{
+			if (tex)
+				SDL_SetTextureBlendMode(tex, SDL_BLENDMODE_BLEND);
+			else
+				SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_BLEND);
+			SDL_RenderGeometry(renderer, tex, verts.data(), (int)verts.size(), indices.data(), (int)indices.size());
+		}
 	}
 };
 

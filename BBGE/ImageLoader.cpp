@@ -127,68 +127,42 @@ void img_FreeRaw(RawImage *img)
 }
 
 // -------------------------------------------------------------------------
-// GL texture loading
+// SDL_Texture loading
 // -------------------------------------------------------------------------
 
-static GLuint uploadRawAsGLTexture(const RawImage &img, bool mipmaps, bool luminanceAlpha,
-	GLint wrap, GLint minFilter, GLint magFilter)
+static SDL_Texture *uploadRawAsSDLTexture(SDL_Renderer *renderer, const RawImage &img, SDL_ScaleMode scaleMode)
 {
-	if (!img.Data || !img.Width || !img.Height)
+	if (!renderer || !img.Data || !img.Width || !img.Height)
 		return 0;
 
-	unsigned char *uploadData = img.Data;
-	unsigned char *converted = 0;
-	GLenum srcFormat = (img.Components == 4) ? GL_RGBA : GL_RGB;
+	const SDL_PixelFormat fmt = (img.Components == 4) ? SDL_PIXELFORMAT_RGBA32 : SDL_PIXELFORMAT_RGB24;
 
-	if (luminanceAlpha)
-	{
-		converted = (unsigned char*)malloc((size_t)img.Width * img.Height * 2);
-		if (converted)
-		{
-			for (unsigned int i = 0; i < img.Width * img.Height; i++)
-			{
-				const unsigned char *px = img.Data + (size_t)i * img.Components;
-				unsigned char lum = (unsigned char)(((int)px[0] + px[1] + px[2]) / 3);
-				unsigned char a = (img.Components == 4) ? px[3] : 255;
-				converted[i * 2 + 0] = lum;
-				converted[i * 2 + 1] = a;
-			}
-			uploadData = converted;
-			srcFormat = GL_LUMINANCE_ALPHA;
-		}
-	}
+	// SDL_CreateTextureFromSurface wants an SDL_Surface, and img.Data is
+	// already exactly the tightly-packed pixel layout that format expects
+	// (see surfaceToRawImage), so wrap it without copying rather than
+	// re-decoding.
+	SDL_Surface *surf = SDL_CreateSurfaceFrom((int)img.Width, (int)img.Height, fmt,
+		(void*)img.Data, (int)(img.Width * img.Components));
+	if (!surf)
+		return 0;
 
-	GLuint tex = 0;
-	glGenTextures(1, &tex);
-	glBindTexture(GL_TEXTURE_2D, tex);
+	SDL_Texture *tex = SDL_CreateTextureFromSurface(renderer, surf);
+	SDL_DestroySurface(surf); // does not free img.Data, which we don't own via this surface
 
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, wrap);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, wrap);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, minFilter);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, magFilter);
-
-	if (mipmaps)
-		glTexParameteri(GL_TEXTURE_2D, GL_GENERATE_MIPMAP, GL_TRUE);
-
-	glTexImage2D(GL_TEXTURE_2D, 0, srcFormat, img.Width, img.Height, 0,
-		srcFormat, GL_UNSIGNED_BYTE, uploadData);
-
-	if (converted)
-		free(converted);
+	if (tex)
+		SDL_SetTextureScaleMode(tex, scaleMode);
 
 	return tex;
 }
 
-GLuint img_LoadGLTexture(const std::string &filename,
-	bool mipmaps, bool luminanceAlpha,
-	GLint wrap, GLint minFilter, GLint magFilter,
-	unsigned int *outWidth, unsigned int *outHeight)
+SDL_Texture *img_LoadSDLTexture(SDL_Renderer *renderer, const std::string &filename,
+	SDL_ScaleMode scaleMode, unsigned int *outWidth, unsigned int *outHeight)
 {
 	RawImage img;
 	if (!img_LoadRaw(filename, &img))
 		return 0;
 
-	GLuint tex = uploadRawAsGLTexture(img, mipmaps, luminanceAlpha, wrap, minFilter, magFilter);
+	SDL_Texture *tex = uploadRawAsSDLTexture(renderer, img, scaleMode);
 
 	if (outWidth) *outWidth = img.Width;
 	if (outHeight) *outHeight = img.Height;
@@ -197,16 +171,14 @@ GLuint img_LoadGLTexture(const std::string &filename,
 	return tex;
 }
 
-GLuint img_LoadGLTextureMem(const void *mem, size_t size, const char *typeHint,
-	bool mipmaps, bool luminanceAlpha,
-	GLint wrap, GLint minFilter, GLint magFilter,
-	unsigned int *outWidth, unsigned int *outHeight)
+SDL_Texture *img_LoadSDLTextureMem(SDL_Renderer *renderer, const void *mem, size_t size, const char *typeHint,
+	SDL_ScaleMode scaleMode, unsigned int *outWidth, unsigned int *outHeight)
 {
 	RawImage img;
 	if (!img_LoadRawMem(mem, size, typeHint, &img))
 		return 0;
 
-	GLuint tex = uploadRawAsGLTexture(img, mipmaps, luminanceAlpha, wrap, minFilter, magFilter);
+	SDL_Texture *tex = uploadRawAsSDLTexture(renderer, img, scaleMode);
 
 	if (outWidth) *outWidth = img.Width;
 	if (outHeight) *outHeight = img.Height;

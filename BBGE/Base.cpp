@@ -350,20 +350,45 @@ bool exists(const std::string &f, bool makeFatal, bool skipVFS)
 	return e;
 }
 
-void drawCircle(float radius, int stepSize)
+void drawCircle(float radius, int stepSize, float r, float g, float b, float a)
 {
-	//glDisable(GL_CULL_FACE);
+	SDL_Renderer *renderer = core->getRenderer();
+	if (!renderer || stepSize <= 0) return;
 
-	glBegin(GL_POLYGON);
-	{
-		for(int i=0;i < 360; i+=stepSize) {
-			const float degInRad = i*PI/180.0f;
-			glVertex3f(cosf(degInRad)*radius, sinf(degInRad)*radius,0.0);
-		}
+	// GL_POLYGON (a convex N-gon fan implied by its point ring) -> an
+	// explicit triangle fan: local-origin center vertex + the ring,
+	// connecting consecutive ring points to the center.
+	std::vector<SDL_Vertex> verts;
+	std::vector<int> indices;
+	SDL_FColor col = {r, g, b, a};
+
+	glm::vec4 center = core->transform.transformPoint(0, 0);
+	SDL_Vertex cv;
+	cv.color = col;
+	cv.position = {center.x, center.y};
+	cv.tex_coord = {0,0};
+	verts.push_back(cv);
+
+	for(int i=0;i < 360; i+=stepSize) {
+		const float degInRad = i*PI/180.0f;
+		glm::vec4 p = core->transform.transformPoint(cosf(degInRad)*radius, sinf(degInRad)*radius);
+		SDL_Vertex v;
+		v.color = col;
+		v.position = {p.x, p.y};
+		v.tex_coord = {0,0};
+		verts.push_back(v);
 	}
-	glEnd();
 
-	//glEnable(GL_CULL_FACE);
+	int ringCount = (int)verts.size() - 1;
+	for (int i = 0; i < ringCount; i++)
+	{
+		int a1 = 1 + i;
+		int a2 = 1 + ((i+1) % ringCount);
+		indices.push_back(0); indices.push_back(a1); indices.push_back(a2);
+	}
+
+	if (!indices.empty())
+		SDL_RenderGeometry(renderer, NULL, verts.data(), (int)verts.size(), indices.data(), (int)indices.size());
 }
 
 void exit_error(const std::string &message)
@@ -380,11 +405,6 @@ std::string parseCommand(const std::string &line, const std::string &command)
 		return line.substr((command.length()), line.length());
 	}
 	return "";
-}
-
-void glColor3_256(int r, int g, int b)
-{
-	glColor4f(float(r)/256.0f, float(g)/256.0f, float(b)/256.0f, 1.0f);
 }
 
 bool chance(int perc)
@@ -910,30 +930,6 @@ bool isTouchingLine(Vector lineStart, Vector lineEnd, Vector point, int radius, 
 	if (closestP)
 		(*closestP) = closest;
     return distsqr <= radius*radius;
-}
-
-
-GLuint generateEmptyTexture(int quality)											// Create An Empty Texture
-{
-	GLuint txtnumber=0;											// Texture ID
-	unsigned char *data;											// Stored Data
-
-	// Create Storage Space For Texture Data (128x128x4)
-	int size = (quality * quality) * 4;
-	data = new unsigned char[size];
-
-	memset(data, 0, size);	// Clear Storage Memory
-
-	glGenTextures(1, &txtnumber);								// Create 1 Texture
-	glBindTexture(GL_TEXTURE_2D, txtnumber);					// Bind The Texture
-	glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MIN_FILTER,GL_LINEAR);
-	glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MAG_FILTER,GL_LINEAR);
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, quality, quality, 0,
-		GL_RGBA, GL_UNSIGNED_BYTE, data);						// Build Texture Using Information In data
-
-	delete [] data;												// Release data
-
-	return txtnumber;											// Return The Texture ID
 }
 
 Vector randVector(float mag)

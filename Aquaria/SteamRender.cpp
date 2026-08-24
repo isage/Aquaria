@@ -40,8 +40,9 @@ void SteamRender::onUpdate(float dt)
 
 void SteamRender::onRender()
 {
-	//glDisable(GL_CULL_FACE);
-	//int qs = 0;
+	SDL_Renderer *renderer = core->getRenderer();
+	if (!renderer) return;
+	SDL_Texture *tex = texture ? texture->sdlTexture : 0;
 
 	for (Path *p = dsq->game->getFirstPathOfType(PATH_STEAM); p; p = p->nextOfType)
 	{
@@ -83,43 +84,43 @@ void SteamRender::onRender()
 							const float len = diff.getLength2D();
 							const float texScale = len/256.0f;
 
-							//qs++;
-							glBegin(GL_QUAD_STRIP);
-								glColor4f(1,1,1,0);
-								glTexCoord2f((0)*texScale+p->animOffset, 0);
-								glVertex2f(r1.x, r1.y);
+							// GL_QUAD_STRIP (8 points -> 3 quads) -> triangle list.
+							glm::vec4 w1 = core->transform.transformPoint(r1.x, r1.y);
+							glm::vec4 w2p = core->transform.transformPoint(r2.x, r2.y);
+							glm::vec4 w3 = core->transform.transformPoint(r3.x, r3.y);
+							glm::vec4 w4 = core->transform.transformPoint(r4.x, r4.y);
+							glm::vec4 w5 = core->transform.transformPoint(r5.x, r5.y);
+							glm::vec4 w6 = core->transform.transformPoint(r6.x, r6.y);
+							glm::vec4 w7 = core->transform.transformPoint(r7.x, r7.y);
+							glm::vec4 w8 = core->transform.transformPoint(r8.x, r8.y);
 
-								glTexCoord2f((0)*texScale+p->animOffset, 1);
-								glVertex2f(r2.x, r2.y);
+							SDL_FColor edgeCol = {1,1,1,0};
+							SDL_FColor midCol = {1,1,1,alpha.x};
 
-								glColor4f(1,1,1,alpha.x);
-								glTexCoord2f((0+0.25f)*texScale+p->animOffset, 0);
-								glVertex2f(r3.x, r3.y);
+							SDL_Vertex v[8];
+							v[0].position={w1.x,w1.y}; v[0].tex_coord={(0)*texScale+p->animOffset, 0}; v[0].color=edgeCol;
+							v[1].position={w2p.x,w2p.y}; v[1].tex_coord={(0)*texScale+p->animOffset, 1}; v[1].color=edgeCol;
+							v[2].position={w3.x,w3.y}; v[2].tex_coord={(0+0.25f)*texScale+p->animOffset, 0}; v[2].color=midCol;
+							v[3].position={w4.x,w4.y}; v[3].tex_coord={(0+0.25f)*texScale+p->animOffset, 1}; v[3].color=midCol;
+							v[4].position={w5.x,w5.y}; v[4].tex_coord={(1-0.25f)*texScale+p->animOffset, 0}; v[4].color=midCol;
+							v[5].position={w6.x,w6.y}; v[5].tex_coord={(1-0.25f)*texScale+p->animOffset, 1}; v[5].color=midCol;
+							v[6].position={w7.x,w7.y}; v[6].tex_coord={(1)*texScale+p->animOffset, 0}; v[6].color=edgeCol;
+							v[7].position={w8.x,w8.y}; v[7].tex_coord={(1)*texScale+p->animOffset, 1}; v[7].color=edgeCol;
 
-								glTexCoord2f((0+0.25f)*texScale+p->animOffset, 1);
-								glVertex2f(r4.x, r4.y);
+							static const int idx[18] = {
+								0,1,3, 0,3,2,
+								2,3,5, 2,5,4,
+								4,5,7, 4,7,6
+							};
 
-								glColor4f(1,1,1,alpha.x);
-								glTexCoord2f((1-0.25f)*texScale+p->animOffset, 0);
-								glVertex2f(r5.x, r5.y);
-
-								glTexCoord2f((1-0.25f)*texScale+p->animOffset, 1);
-								glVertex2f(r6.x, r6.y);
-
-								glColor4f(1,1,1,0);
-								glTexCoord2f((1)*texScale+p->animOffset, 0);
-								glVertex2f(r7.x, r7.y);
-
-								glTexCoord2f((1)*texScale+p->animOffset, 1);
-								glVertex2f(r8.x, r8.y);
-							glEnd();
+							if (tex) SDL_SetTextureBlendMode(tex, currentBlendMode);
+							else SDL_SetRenderDrawBlendMode(renderer, currentBlendMode);
+							SDL_RenderGeometry(renderer, tex, v, 8, idx, 18);
 						}
 					}
 				}
 			}
 		}
 	}
-
-	//glEnable(GL_CULL_FACE);
 }
 

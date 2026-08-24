@@ -38,44 +38,15 @@ void ScreenTransition::createTexture()
 	windowWidth = core->getWindowWidth();
 	windowHeight = core->getWindowHeight();
 
-	textureWidth = windowWidth;
-	textureHeight = windowHeight;
-
-	sizePowerOf2Texture(textureWidth);
-	sizePowerOf2Texture(textureHeight);
-
-	/*
-	if (windowWidth>1024)
-	{
-		textureWidth = 2048;
-		textureHeight = 1024;
-	}
-	*/
-
-	//create our texture
-	glGenTextures(1,&screen_texture);
-	glBindTexture(GL_TEXTURE_2D, screen_texture);
-	//GL_NEAREST
-	// vs
-	//GL_LINEAR
-	glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MIN_FILTER, GL_LINEAR);		//GL_NEAREST);		//GL_NEAREST);
-	glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MAG_FILTER, GL_LINEAR);		//GL_NEAREST);		//GL_NEAREST);
-	glTexImage2D(GL_TEXTURE_2D,0,3, textureWidth, textureHeight, 0 , GL_RGB, GL_UNSIGNED_BYTE, NULL);
-	glBindTexture(GL_TEXTURE_2D,0);
-
-/*
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-*/
+	// No power-of-2 padding needed - SDL target textures aren't
+	// constrained to POT sizes the way the old GL FBO texture was, so
+	// captureBuffer is created at exactly the window size.
+	captureBuffer.init(windowWidth, windowHeight);
 }
 
 void ScreenTransition::destroyTexture()
 {
-	if (screen_texture)
-	{
-		glDeleteTextures(1, &screen_texture);
-		screen_texture = 0;
-	}
+	captureBuffer.unloadDevice();
 }
 
 void ScreenTransition::unloadDevice()
@@ -94,17 +65,9 @@ void ScreenTransition::capture()
 {	
 	core->render();
 
-	/*
-	std::ostringstream os;
-	os << "windowWidth [" << windowWidth << "] windowHeight [" << windowHeight << "]";
-	errorLog(os.str());
-	*/
-	
-	if (screen_texture)
+	if (captureBuffer.isInited() && core->frameBuffer.isInited())
 	{
-		glBindTexture(GL_TEXTURE_2D,screen_texture);
-		glCopyTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, 0, 0, windowWidth, windowHeight);
-		glBindTexture(GL_TEXTURE_2D, 0);
+		captureBuffer.copyFrom(core->frameBuffer);
 	}
 
 	core->showBuffer();
@@ -134,41 +97,41 @@ void ScreenTransition::onRender()
 	
 	float width2 = float(width)/2;
 	float height2 = float(height)/2;
-	
-	const float pw = float(windowWidth)/float(textureWidth);
-	const float ph = float(windowHeight)/float(textureHeight);
-	
-	/*
-	std::ostringstream os;
-	os << "wh(" << width2 << ", " << height2 << ") p(" << pw << ", " << ph << ")";
-	debugLog(os.str());
-	*/
-	
-	glBindTexture(GL_TEXTURE_2D, screen_texture);
-	//glBindTexture(GL_TEXTURE_2D, 0);
-	// 16/10 = 1.6
-	// 16/9 = 1.77777
-	// 4/3 = 1.33333
-	
-	// fix slight offset in 16/10 resolution
-	// only on mac?
 
+	// pw/ph are always 1.0 now (no POT padding - see createTexture()),
+	// kept as named values matching the ratio the old code computed, in
+	// case captureBuffer's size and the window ever diverge again.
+	const float pw = captureBuffer.getWidth() > 0 ? float(windowWidth)/float(captureBuffer.getWidth()) : 1.0f;
+	const float ph = captureBuffer.getHeight() > 0 ? float(windowHeight)/float(captureBuffer.getHeight()) : 1.0f;
 
-	glBegin(GL_QUADS);
-		//glNormal3f( 0.0f, 0.0f, 1.0f);
-		//glColor4f(color.x, color.y, color.z, alpha.getValue());
-		glTexCoord2d(0, 0);
-		glVertex3f(-width2, height2,  0.0);
-		glTexCoord2d(pw, 0);
-		glVertex3f( width2, height2,  0.0);
-		glTexCoord2d(pw, ph);
-		glVertex3f( width2,  -height2,  0.0);
-		glTexCoord2d(0, ph);
-		glVertex3f(-width2,  -height2,  0.0);
-	glEnd();
+	SDL_Renderer *renderer = core->getRenderer();
+	if (!renderer || !captureBuffer.isInited()) return;
 
-	glBindTexture(GL_TEXTURE_2D, 0);
-	
+	SDL_Texture *tex = captureBuffer.getTexture();
+
+	glm::vec4 c0 = core->transform.transformPoint(-width2, +height2);
+	glm::vec4 c1 = core->transform.transformPoint(+width2, +height2);
+	glm::vec4 c2 = core->transform.transformPoint(+width2, -height2);
+	glm::vec4 c3 = core->transform.transformPoint(-width2, -height2);
+
+	SDL_FColor col = {1, 1, 1, alpha.x};
+
+	// c0/c1 are the BOTTOM screen vertices (+height2, Y-down), c2/c3 are
+	// the TOP screen vertices. V=0 is the texture's top row (confirmed
+	// empirically), so bottom vertices sample V=ph (texture bottom) and
+	// top vertices sample V=0 (texture top). The previous assignment had
+	// this backward (copied from the original GL code's convention, which
+	// doesn't apply to this SDL3 pipeline - see the migration notes).
+	SDL_Vertex v[4];
+	v[0].position = {c0.x, c0.y}; v[0].tex_coord = {0,  ph}; v[0].color = col;
+	v[1].position = {c1.x, c1.y}; v[1].tex_coord = {pw, ph}; v[1].color = col;
+	v[2].position = {c2.x, c2.y}; v[2].tex_coord = {pw, 0};  v[2].color = col;
+	v[3].position = {c3.x, c3.y}; v[3].tex_coord = {0,  0};  v[3].color = col;
+
+	static const int idx[6] = {0,1,2,0,2,3};
+
+	SDL_SetTextureBlendMode(tex, SDL_BLENDMODE_BLEND);
+	SDL_RenderGeometry(renderer, tex, v, 4, idx, 6);
+
 	RenderObject::lastTextureApplied = 0;
 }
-

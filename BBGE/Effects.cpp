@@ -19,6 +19,7 @@ along with this program; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 */
 #include <assert.h>
+#include <vector>
 
 #include "Effects.h"
 #include "Core.h"
@@ -72,16 +73,24 @@ void PostProcessingFX::render()
 	if(!core->frameBuffer.isEnabled())
 		return;
 
+	SDL_Renderer *renderer = core->getRenderer();
+	if (!renderer) return;
+
 	for (int i = 0; i < FXT_MAX; i++)
 	{
 		if (enabled[i])
 		{
-			glPushMatrix();
+			// NOTE: drawn with an isolated identity transform (matching the
+			// old glPushMatrix()/glLoadIdentity()/glPopMatrix() pair) - this
+			// is a screen-space overlay effect, not tied to any object's
+			// world transform.
+			RenderTransformStack xf;
+
 			FXTypes type = (FXTypes)i;
 			switch(type)
 			{
 			case FXT_RADIALBLUR:
-
+			{
 				float windowW = core->getWindowWidth();
 				float windowH = core->getWindowHeight();
 				float textureW = core->frameBuffer.getWidth();
@@ -98,149 +107,56 @@ void PostProcessingFX::render()
 				float pw = float(windowW)/float(textureW);
 				float ph = float(windowH)/float(textureH);
 
-				glLoadIdentity();
+				xf.translate(width2 + offX, height2 + offY, 0);
 
+				SDL_Texture *tex = core->frameBuffer.getTexture();
 
-				glTranslatef(width2 + offX, height2 + offY, 0);
-
-				glEnable(GL_TEXTURE_2D);
-
-				core->frameBuffer.bindTexture();
-
-				glEnable(GL_BLEND);
-
-				if (blendType == 1)
-					glBlendFunc(GL_SRC_ALPHA,GL_ONE);
-				else
-					glBlendFunc(GL_SRC_ALPHA,GL_ONE_MINUS_SRC_ALPHA);
+				SDL_BlendMode blend = (blendType == 1) ? SDL_BLENDMODE_ADD : SDL_BLENDMODE_BLEND;
+				if (tex) SDL_SetTextureBlendMode(tex, blend);
+				else SDL_SetRenderDrawBlendMode(renderer, blend);
 
 				float percentX = pw, percentY = ph;
 
 				float inc = 0.01;
-				float spost = 0.0f;											// Starting Texture Coordinate Offset
+				float spost = 0.0f;										// Starting Texture Coordinate Offset
 				float alphadec = alpha / blurTimes;
 
-				glBegin(GL_QUADS);											// Begin Drawing Quads
-					for (int num = 0;num < blurTimes; num++)						// Number Of Times To Render Blur
-					{
-						glColor4f(radialBlurColor.x, radialBlurColor.y, radialBlurColor.z, alpha);					// Set The Alpha Value (Starts At 0.2)
+				std::vector<SDL_Vertex> verts;
+				std::vector<int> indices;
+				verts.reserve(blurTimes*4);
+				indices.reserve(blurTimes*6);
 
-						glTexCoord2d(spost, spost);
-						glVertex3f(-width2, height2,  0.0);
+				for (int num = 0;num < blurTimes; num++)					// Number Of Times To Render Blur
+				{
+					SDL_FColor col = {radialBlurColor.x, radialBlurColor.y, radialBlurColor.z, alpha};
 
-						glTexCoord2d(percentX-spost, spost);
-						glVertex3f( width2, height2,  0.0);
+					glm::vec4 p0 = xf.transformPoint(-width2, height2);
+					glm::vec4 p1 = xf.transformPoint( width2, height2);
+					glm::vec4 p2 = xf.transformPoint( width2, -height2);
+					glm::vec4 p3 = xf.transformPoint(-width2, -height2);
 
-						glTexCoord2d(percentX-spost, percentY-spost);
-						glVertex3f( width2,  -height2,  0.0);
+					int base = (int)verts.size();
+					SDL_Vertex v;
+					v.color = col;
+					v.position={p0.x,p0.y}; v.tex_coord={(float)spost,(float)spost}; verts.push_back(v);
+					v.position={p1.x,p1.y}; v.tex_coord={(float)(percentX-spost),(float)spost}; verts.push_back(v);
+					v.position={p2.x,p2.y}; v.tex_coord={(float)(percentX-spost),(float)(percentY-spost)}; verts.push_back(v);
+					v.position={p3.x,p3.y}; v.tex_coord={(float)spost,(float)(percentY-spost)}; verts.push_back(v);
+					indices.push_back(base+0); indices.push_back(base+1); indices.push_back(base+2);
+					indices.push_back(base+0); indices.push_back(base+2); indices.push_back(base+3);
 
-						glTexCoord2d(spost, percentY-spost);
-						glVertex3f(-width2,  -height2,  0.0);
+					spost += inc;											// Gradually Increase spost (Zooming Closer To Texture Center)
+					alpha -= alphadec;										// Gradually Decrease alpha (Gradually Fading Image Out)
+				}
 
-						spost += inc;										// Gradually Increase spost (Zooming Closer To Texture Center)
-						alpha -= alphadec;							// Gradually Decrease alpha (Gradually Fading Image Out)
-					}
-				glEnd();
+				if (!verts.empty())
+					SDL_RenderGeometry(renderer, tex, verts.data(), (int)verts.size(), indices.data(), (int)indices.size());
 
-
-				glColor4f(1,1,1,1);
-				glBindTexture(GL_TEXTURE_2D, 0);
 				RenderObject::lastTextureApplied = 0;
-
-
-			break;
 			}
-			glPopMatrix();
-		}
-	}
-}
-
-/*
-GLuint		blurTexture;
-GLuint emptyTexture()											// Create An Empty Texture
-{
-	GLuint txtnumber;											// Texture ID
-	unsigned int* data;											// Stored Data
-
-	// Create Storage Space For Texture Data (128x128x4)
-	data = (unsigned int*)new GLuint[((128 * 128)* 4 * sizeof(unsigned int))];
-	ZeroMemory(data,((128 * 128)* 4 * sizeof(unsigned int)));	// Clear Storage Memory
-
-	glGenTextures(1, &txtnumber);								// Create 1 Texture
-	glBindTexture(GL_TEXTURE_2D, txtnumber);					// Bind The Texture
-	glTexImage2D(GL_TEXTURE_2D, 0, 4, 128, 128, 0,
-		GL_RGBA, GL_UNSIGNED_BYTE, data);						// Build Texture Using Information In data
-	glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MIN_FILTER,GL_LINEAR);
-	glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MAG_FILTER,GL_LINEAR);
-
-	delete [] data;												// Release data
-
-	return txtnumber;											// Return The Texture ID
-}
-
-PostProcessingFX::PostProcessingFX()
-{
-
-}
-
-void PostProcessingFX::init(FXTypes type)
-{
-	if (type == FXT_RADIALBLUR)
-	{
-		blurTexture = emptyTexture();
-	}
-	enabled[(int)type] = true;
-}
-
-void PostProcessingFX::shutdown(FXTypes type)
-{
-	enabled[int(type)] = false;
-}
-
-void PostProcessingFX::preRender()
-{
-	for (int i = 0; i < FXT_MAX; i++)
-	{
-		if (enabled[i])
-		{
-			FXTType type = (FXType)i;
-			switch(type)
-			{
-			case FXT_RADIALBLUR:
-				glViewport(0,0,128,128);									// Set Our Viewport (Match Texture Size;
-				glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);			// Clear The Screen And Depth Buffer
-				core->render();
-				glBindTexture(GL_TEXTURE_2D,BlurTexture);					// Bind To The Blur Texture
-
-				// Copy Our ViewPort To The Blur Texture (From 0,0 To 128,128... No Border)
-				glCopyTexImage2D(GL_TEXTURE_2D, 0, GL_LUMINANCE, 0, 0, 128, 128, 0);
-
-				glClearColor(0.0f, 0.0f, 0.5f, 0.5);						// Set The Clear Color To Medium Blue
-				glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);			// Clear The Screen And Depth Buffer
-
-				glViewport(0, 0, 800, 600);
 			break;
 			}
 		}
 	}
 }
 
-void PostProcessingFX::render()
-{
-	for (int i = 0; i < FXT_MAX; i++)
-	{
-		if (enabled[i])
-		{
-			FXTType type = (FXType)i;
-			switch(type)
-			{
-			case FXT_RADIALBLUR:
-				glBegin(GL_QUADS);
-					
-				glEnd();
-			break;
-			}
-		}
-	}
-}
-*/

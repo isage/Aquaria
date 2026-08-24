@@ -27,30 +27,20 @@ DarkLayer::DarkLayer()
 	active = false;
 	layer = -1;
 	renderLayer = -1;
-	texture = 0;
 
 	stretch = 4;
-	format = GL_RGB;			//FIXED?: used to be GL_LUMINANCE, that might have been causing problems
-	useFrameBuffer = true;		//BUG?: will do this even if frame buffer is off in usersettings...
 }
 
 void DarkLayer::unloadDevice()
 {
 	if (useFrameBuffer)
 		frameBuffer.unloadDevice();
-	else
-	{
-		if (texture)
-			glDeleteTextures(1, &texture);
-	}
 }
 
 void DarkLayer::reloadDevice()
 {
 	if (useFrameBuffer)
 		frameBuffer.reloadDevice();
-	else
-		texture = generateEmptyTexture(quality);
 }
 
 int DarkLayer::getRenderLayer()
@@ -60,10 +50,7 @@ int DarkLayer::getRenderLayer()
 
 bool DarkLayer::isUsed()
 {
-	//HACK: disabling dark layer for temporary testing build
-	// MAKE SURE TO RESTORE THIS CODE TO THE WAY IT WAS
 	return layer > -1 && active;
-	//return false;
 }
 
 void DarkLayer::setLayers(int layer, int rl)
@@ -78,18 +65,10 @@ void DarkLayer::init(int quality, bool useFrameBufferParam)
 
 	this->quality = quality;
 
-	if (useFrameBuffer)
-	{		
-		if (!frameBuffer.init(quality, quality))
-			useFrameBuffer = false;
-		else
-			debugLog("Dark Layer: using framebuffer");
-	}
-	if (!useFrameBuffer)
-	{
-		debugLog("Dark Layer: using generated texture");
-		texture = generateEmptyTexture(quality);
-	}
+	if (!frameBuffer.init(quality, quality))
+		debugLog("Dark Layer: not using framebuffer, expect bugs");
+	else
+		debugLog("Dark Layer: using framebuffer");
 }
 
 int DarkLayer::getLayer()
@@ -107,48 +86,26 @@ void DarkLayer::preRender()
 	bool verbose = core->coreVerboseDebug;
 	if (layer != -1)
 	{
-		if (verbose) debugLog("viewport");
-
-		glViewport(0,0,quality,quality);
-		//core->clearBuffers();
-		
-		//glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-		
 		if (verbose) debugLog("startCapture");
 
-		if (useFrameBuffer)
-			frameBuffer.startCapture();
+		frameBuffer.startCapture();
 
 		if (verbose) debugLog("clearColor");
-		
-		glClearColor(1,1,1,1);
-		glClear(GL_COLOR_BUFFER_BIT);
+
+		Vector savedClearColor = core->getClearColor();
+		core->setClearColor(Vector(1, 1, 1));
 
 		if (verbose) debugLog("render");
-		
+
 		core->render(layer, layer, false); 
 
-		if (verbose) debugLog("endCapture");
-		
-		if (useFrameBuffer)
-			frameBuffer.endCapture();
-		else
-		{
-			glBindTexture(GL_TEXTURE_2D,texture);					// Bind To The Blur Texture
-			// Copy Our ViewPort To The Blur Texture (From 0,0 To q,q... No Border)
-			glCopyTexImage2D(GL_TEXTURE_2D, 0, format, 0, 0, quality, quality, 0);
-		}
+		core->setClearColor(savedClearColor);
 
-		if (verbose) debugLog("viewport");
-		
-		glViewport(0, 0, core->width, core->height);
-		glClearColor(0,0,0,0);
-		
+		if (verbose) debugLog("endCapture");
+
+		frameBuffer.endCapture();
+
 		if (verbose) debugLog("done");
-		/*				
-		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-		*/
-		//glCopyTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, 0, 0, quality, quality, 0);
 	}
 }
 
@@ -156,69 +113,44 @@ void DarkLayer::render()
 {
 	if (renderLayer != -1)
 	{
-		glPushMatrix();
-		glLoadIdentity();
-		//float percentX = (float)core->width/(float)quality;
-		//float percentY = (float)core->height/(float)quality;
-		
-		glEnable(GL_TEXTURE_2D);
-		if (useFrameBuffer)
-			frameBuffer.bindTexture();
+		SDL_Renderer *renderer = core->getRenderer();
+		if (!renderer) return;
+
+		SDL_Texture *tex = useFrameBuffer ? frameBuffer.getTexture() : 0;
+
+		// subtractive blend! (using color) - GL_ZERO,GL_SRC_COLOR is exactly
+		// SDL_BLENDMODE_MOD's formula.
+		if (tex)
+			SDL_SetTextureBlendMode(tex, SDL_BLENDMODE_MOD);
 		else
-			glBindTexture(GL_TEXTURE_2D,texture);
-		
-		//glDisable(GL_BLEND);	
-		
-		glEnable(GL_BLEND);	
-		//glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-		
-		//glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-		//glBlendFunc(GL_ZERO, GL_SRC_COLOR);
-
-		//glBlendEquation(GL_FUNC_SUBTRACT);
-
-		// subtractive blend! (using color)
-		glBlendFunc(GL_ZERO, GL_SRC_COLOR);
-
-		GLenum error = glGetError();
-		if (error == GL_INVALID_ENUM)
-		{
-			debugLog("darkLayer: invalid enum");
-		}
-		else if (error == GL_INVALID_OPERATION)
-		{
-			debugLog("darkLayer: invalid operation");
-		}
-		
-		//glBlendFunc(GL_SRC_ALPHA_SATURATE, GL_ONE);
-		//glBlendFunc(GL_ONE_MINUS_SRC_COLOR, GL_ONE_MINUS_SRC_ALPHA);
-		glColor4f(1,1,1,1);
+			SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_MOD);
 
 		float width  =  core->getWindowWidth();
 		float height =  core->getWindowHeight();
-		float offX   = -(core->getVirtualOffX() * width / core->getVirtualWidth());
-		float offY   = -(core->getVirtualOffY() * height / core->getVirtualHeight());
+		float offX   = 0.0f;
+		float offY   = 0.0f;
 
-		glBegin(GL_QUADS);
+		// NOTE: drawn with an isolated identity transform (matching the old
+		// glPushMatrix()/glLoadIdentity()/glPopMatrix() pair) - this overlay
+		// is meant to cover the whole screen in device coordinates, not
+		// whatever the current object's world transform happens to be.
+		RenderTransformStack xf;
 
-			glTexCoord2f(0,1);
-			glVertex2f(offX-stretch, offY-stretch);
+		glm::vec4 p0 = xf.transformPoint(offX-stretch, offY-stretch);
+		glm::vec4 p1 = xf.transformPoint(offX-stretch, height+offY+stretch);
+		glm::vec4 p2 = xf.transformPoint(width+offX+stretch, height+offY+stretch);
+		glm::vec4 p3 = xf.transformPoint(width+offX+stretch, offY-stretch);
 
-			glTexCoord2f(0,0);
-			glVertex2f(offX-stretch, height+offY+stretch);
+		SDL_FColor white = {1,1,1,1};
+		SDL_Vertex v[4];
+		v[0].position={p0.x,p0.y}; v[0].tex_coord={0,1}; v[0].color=white;
+		v[1].position={p1.x,p1.y}; v[1].tex_coord={0,0}; v[1].color=white;
+		v[2].position={p2.x,p2.y}; v[2].tex_coord={1,0}; v[2].color=white;
+		v[3].position={p3.x,p3.y}; v[3].tex_coord={1,1}; v[3].color=white;
+		static const int idx[6] = {0,1,2,0,2,3};
 
-			glTexCoord2f(1,0);
-			glVertex2f(width+offX+stretch, height+offY+stretch);
+		SDL_RenderGeometry(renderer, tex, v, 4, idx, 6);
 
-			glTexCoord2f(1,1);
-			glVertex2f(width+offX+stretch, offY-stretch);
-
-		glEnd();
-
-		glPopMatrix();
-		
 		RenderObject::lastTextureApplied = 0;
-		glBindTexture(GL_TEXTURE_2D, 0);
-
 	}
 }

@@ -19,7 +19,9 @@ along with this program; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 */
 #include "QuadTrail.h"
+#include "Core.h"
 #include <assert.h>
+#include <vector>
 
 QuadTrail::QuadTrail(int maxPoints, float pointDist)
 : RenderObject(), maxPoints(maxPoints), pointDist(pointDist), numPoints(0)
@@ -58,61 +60,75 @@ void QuadTrail::onRender()
 {
 	if (numPoints < 2) return;
 
-	//glDisable(GL_CULL_FACE);
 	int c = 0;
 	Vector p, diff, dl, dr;
 	Vector lastPoint;
 
 	const float texScale = texture ? float(numPoints*pointDist)/texture->width : 1.0f;
 
-	glBegin(GL_QUAD_STRIP);
-		for (Points::iterator i = points.begin(); i != points.end(); i++)
+	SDL_Renderer *renderer = core->getRenderer();
+	if (!renderer) return;
+
+	SDL_Texture *tex = texture ? texture->sdlTexture : 0;
+
+	// GL_QUAD_STRIP -> triangle list, one quad per consecutive pair of
+	// left/right edge points (same conversion as Quad's strip mode).
+	std::vector<SDL_Vertex> verts;
+	verts.reserve(points.size() * 2);
+
+	for (Points::iterator i = points.begin(); i != points.end(); i++)
+	{
+		float vAlpha = (quadTrailAlphaEffect == QTAE_NORMAL) ? (*i).life : 1.0f;
+
+		if (c == 0)
 		{
-			if (quadTrailAlphaEffect == QTAE_NORMAL)
-			{
-				glColor4f(1, 1, 1, (*i).life);
-			}
-			if (c == 0)
-			{
-				lastPoint = (*i).point;
-				c++;
-				continue;
-			}
-			p = (*i).point;
-
-			if (c == numPoints-1)
-				p += backOffset;
-
-			diff = p - lastPoint;
-			//possible opt here
-			if (texture)
-				diff.setLength2D(texture->width*0.5f);
-			else
-				diff.setLength2D(32);
-			dl = diff.getPerpendicularLeft();
-			dr = diff.getPerpendicularRight();
-
-			glTexCoord2f(0, (float(c)/numPoints)*texScale);
-			glVertex2f(p.x+dl.x, p.y+dl.y);
-			glTexCoord2f(1, (float(c+1)/numPoints)*texScale);
-			glVertex2f(p.x+dr.x, p.y+dr.y);
-
-			c++;
 			lastPoint = (*i).point;
+			c++;
+			continue;
 		}
-	glEnd();
+		p = (*i).point;
 
-	glBindTexture(GL_TEXTURE_2D, 0);
+		if (c == numPoints-1)
+			p += backOffset;
 
-	glPointSize(4);
-	glColor4f(0, 1, 0, 0.5);
+		diff = p - lastPoint;
+		if (texture)
+			diff.setLength2D(texture->width*0.5f);
+		else
+			diff.setLength2D(32);
+		dl = diff.getPerpendicularLeft();
+		dr = diff.getPerpendicularRight();
 
-	glBegin(GL_POINTS);
-		for (Points::iterator i = points.begin(); i != points.end(); i++)
+		glm::vec4 wl = core->transform.transformPoint(p.x+dl.x, p.y+dl.y);
+		glm::vec4 wr = core->transform.transformPoint(p.x+dr.x, p.y+dr.y);
+
+		SDL_Vertex v;
+		v.color = {1, 1, 1, vAlpha};
+		v.position = {wl.x, wl.y}; v.tex_coord = {0, (float(c)/numPoints)*texScale}; verts.push_back(v);
+		v.position = {wr.x, wr.y}; v.tex_coord = {1, (float(c+1)/numPoints)*texScale}; verts.push_back(v);
+
+		c++;
+		lastPoint = (*i).point;
+	}
+
+	if (verts.size() >= 4)
+	{
+		std::vector<int> indices;
+		size_t numQuads = verts.size()/2 - 1;
+		indices.reserve(numQuads * 6);
+		for (size_t q = 0; q < numQuads; q++)
 		{
-			glVertex2f((*i).point.x, (*i).point.y);
+			int base = (int)q * 2;
+			indices.push_back(base+0); indices.push_back(base+1); indices.push_back(base+3);
+			indices.push_back(base+0); indices.push_back(base+3); indices.push_back(base+2);
 		}
-	glEnd();
+
+		if (tex)
+			SDL_SetTextureBlendMode(tex, currentBlendMode);
+		else
+			SDL_SetRenderDrawBlendMode(renderer, currentBlendMode);
+		SDL_RenderGeometry(renderer, tex, verts.data(), (int)verts.size(), indices.data(), (int)indices.size());
+	}
 }
 
 void QuadTrail::onUpdate(float dt)

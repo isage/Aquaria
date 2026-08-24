@@ -2050,33 +2050,34 @@ void Game::fillGridFromQuad(Quad *q, ObsType obsType, bool trim)
 		}
 
 
-		glPushMatrix();
+		// Pure transform math (same technique as the old Vector::rotate()
+		// and RenderObject::getInvRotPosition() GL-matrix tricks) - uses
+		// its own isolated RenderTransformStack, matching the original's
+		// glPushMatrix()/glLoadIdentity()-per-iteration behavior (each
+		// obstacle point is transformed from scratch, not accumulated).
+		RenderTransformStack xf;
 
 		for (int i = 0; i < obs.size(); i++)
 		{
-			glLoadIdentity();
+			xf.loadIdentity();
 
-			glRotatef(q->rotation.z, 0, 0, 1);
+			xf.rotate(q->rotation.z, 0, 0, 1);
 			if (q->isfh())
 			{
-				glRotatef(180, 0, 1, 0);
+				xf.rotate(180, 0, 1, 0);
 			}
 
-			//glTranslatef((obs[i].x-w2)*TILE_SIZE+TILE_SIZE/2, (obs[i].y-h2)*TILE_SIZE + TILE_SIZE/2, 0);
-			glTranslatef((obs[i].x-w2), (obs[i].y-h2), 0);
+			xf.translate((obs[i].x-w2), (obs[i].y-h2), 0);
 
-			float m[16];
-			glGetFloatv(GL_MODELVIEW_MATRIX, m);
-			float x = m[12];
-			float y = m[13];
+			glm::vec4 origin = xf.transformPoint(0, 0, 0);
+			float x = origin.x;
+			float y = origin.y;
 
-			//dsq->game->setGrid(TileVector(tpos.x+(w2*TILE_SIZE)+(x/TILE_SIZE), tpos.y+(h2*TILE_SIZE)+(y/TILE_SIZE)), obsType);
 			TileVector tvec(tpos.x+w2+x, tpos.y+h2+y);
 			if (!dsq->game->isObstructed(tvec))
 				dsq->game->addGrid(tvec, obsType);
 
 		}
-		glPopMatrix();
 	}
 }
 
@@ -10548,9 +10549,12 @@ ElementTemplate Game::getElementTemplateForLetter(int i)
 	t.tu2 = t.tu1 + cell;
 	t.tv2 = t.tv1 + cell;
 
-	t.tv2 = 1 - t.tv2;
-	t.tv1 = 1 - t.tv1;
-	std::swap(t.tv1,t.tv2);
+	// This "flip tv1/tv2 and swap" was very likely compensating for
+	// Quad::onRender()'s own old V-flip (see the migration notes there) -
+	// two flips cancelling out to a correct result under the old GL
+	// pipeline. Now that Quad's flip has been removed (confirmed wrong
+	// for this SDL3 pipeline via direct empirical test), this one would
+	// be an uncancelled, incorrect flip on its own - removed to match.
 
 	t.w = 512*cell;
 	t.h = 512*cell;

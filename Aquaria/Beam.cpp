@@ -141,24 +141,32 @@ void Beam::render()
 
 void Beam::onRender()
 {
-	//glDisable(GL_CULL_FACE);
 	Vector diff = endPos - position;
 	Vector side = diff;
-	//side.normalize2D();
 	side.setLength2D(beamWidth*2);
 	Vector sideLeft = side.getPerpendicularLeft();
 	Vector sideRight = side.getPerpendicularRight();
 
-	glBegin(GL_QUADS);
-		glTexCoord2f(0, 0);
-		glVertex2f(sideLeft.x, sideLeft.y);
-		glTexCoord2f(1, 0);
-		glVertex2f(sideLeft.x+diff.x, sideLeft.y+diff.y);
-		glTexCoord2f(1, 1);
-		glVertex2f(sideRight.x+diff.x, sideRight.y+diff.y);
-		glTexCoord2f(0, 1);
-		glVertex2f(sideRight.x, sideRight.y);
-	glEnd();
+	SDL_Renderer *renderer = core->getRenderer();
+	if (!renderer) return;
+	SDL_Texture *tex = texture ? texture->sdlTexture : 0;
+
+	glm::vec4 p0 = core->transform.transformPoint(sideLeft.x, sideLeft.y);
+	glm::vec4 p1 = core->transform.transformPoint(sideLeft.x+diff.x, sideLeft.y+diff.y);
+	glm::vec4 p2 = core->transform.transformPoint(sideRight.x+diff.x, sideRight.y+diff.y);
+	glm::vec4 p3 = core->transform.transformPoint(sideRight.x, sideRight.y);
+
+	SDL_FColor col = {effectiveColor.x, effectiveColor.y, effectiveColor.z, effectiveAlpha};
+	SDL_Vertex v[4];
+	v[0].position={p0.x,p0.y}; v[0].tex_coord={0,0}; v[0].color=col;
+	v[1].position={p1.x,p1.y}; v[1].tex_coord={1,0}; v[1].color=col;
+	v[2].position={p2.x,p2.y}; v[2].tex_coord={1,1}; v[2].color=col;
+	v[3].position={p3.x,p3.y}; v[3].tex_coord={0,1}; v[3].color=col;
+	static const int idx[6] = {0,1,2,0,2,3};
+
+	if (tex) SDL_SetTextureBlendMode(tex, currentBlendMode);
+	else SDL_SetRenderDrawBlendMode(renderer, currentBlendMode);
+	SDL_RenderGeometry(renderer, tex, v, 4, idx, 6);
 }
 
 void Beam::onUpdate(float dt)

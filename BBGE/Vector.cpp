@@ -39,12 +39,10 @@ void Vector::rotate2DRad(float rad)
 	y = sinf(rad)*ox + cosf(rad)*oy;
 }
 
-// TODO: use glm
-
 Vector getRotatedVector(const Vector &vec, float rot)
 {
     const glm::mat4 matrix =
-        glm::rotate(glm::mat4(1.0f), glm::radians(rot), glm::vec3(0.0f, 0.0f, 1.0f));
+        glm::rotate(glm::mat4(1.0f), rot, glm::vec3(0.0f, 0.0f, 1.0f));
 
     const glm::vec4 result =
         matrix * glm::vec4(vec.x, vec.y, vec.z, 1.0f);

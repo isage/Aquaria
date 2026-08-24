@@ -29,13 +29,24 @@ class FrameBuffer
 public:
 	FrameBuffer();	
 	~FrameBuffer();
-	bool init(int width, int height, bool fitToScreen=false, GLint filter=GL_LINEAR);
+	bool init(int width, int height, bool fitToScreen=false, SDL_ScaleMode filter=SDL_SCALEMODE_LINEAR);
 	bool isInited() { return inited; }
 	bool isEnabled() { return enabled; }
 	void setEnabled(bool e);
+	// Set self as the active render target (replaces binding the GL FBO);
+	// saves whatever was previously the active target so endCapture() can
+	// restore it.
 	void startCapture();
 	void endCapture();
-	void bindTexture();
+
+	SDL_Texture *getTexture() { return texture; }
+
+	// Snapshot another FrameBuffer's current contents into this one (a
+	// same-renderer texture-to-texture blit). Used by ScreenTransition,
+	// which needs a frozen copy of a specific moment rather than a live
+	// continuously-updated capture.
+	void copyFrom(FrameBuffer &other);
+
 	int getWidth() { return w; }
 	int getHeight() { return h; }
 	float getWidthP();
@@ -44,14 +55,12 @@ public:
 	void unloadDevice();
 	void reloadDevice();
 
-	static void resetOpenGL();
-
 protected:
 	int _w, _h;
 	bool _fitToScreen;
-	GLuint g_frameBuffer;
-	GLuint g_depthRenderBuffer;
-	GLuint g_dynamicTextureID;
+	SDL_Texture *texture;
+	SDL_Texture *savedTarget; // previous render target, saved by startCapture()
+	SDL_ScaleMode scaleMode;
 	int w,h;
 	bool enabled, inited;
 };

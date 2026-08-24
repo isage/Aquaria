@@ -41,14 +41,20 @@ bool img_LoadRawMem(const void *mem, size_t size, const char *typeHint, RawImage
 
 void img_FreeRaw(RawImage *img);
 
-GLuint img_LoadGLTexture(const std::string &filename,
-	bool mipmaps, bool luminanceAlpha,
-	GLint wrap, GLint minFilter, GLint magFilter,
+// Decode + upload as an SDL_Texture (replaces the old GL-texture loading
+// path now that Quad/RenderObject draw via SDL_RenderGeometry instead of
+// raw GL). scaleMode maps 1:1 from the old GL_NEAREST/GL_LINEAR filter
+// choice. Unlike the old GL path, there is no mipmap parameter - SDL's 2D
+// renderer has no mipmap chain concept, filtering is purely per-draw via
+// scaleMode - and no per-texture wrap/repeat mode in this SDL3 version;
+// repeat-filled quads need tiled geometry at the call site instead (see
+// Quad::repeatTextureToFill()).
+SDL_Texture *img_LoadSDLTexture(SDL_Renderer *renderer, const std::string &filename,
+	SDL_ScaleMode scaleMode,
 	unsigned int *outWidth = 0, unsigned int *outHeight = 0);
 
-GLuint img_LoadGLTextureMem(const void *mem, size_t size, const char *typeHint,
-	bool mipmaps, bool luminanceAlpha,
-	GLint wrap, GLint minFilter, GLint magFilter,
+SDL_Texture *img_LoadSDLTextureMem(SDL_Renderer *renderer, const void *mem, size_t size, const char *typeHint,
+	SDL_ScaleMode scaleMode,
 	unsigned int *outWidth = 0, unsigned int *outHeight = 0);
 
 #endif

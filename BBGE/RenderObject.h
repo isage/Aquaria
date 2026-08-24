@@ -226,7 +226,15 @@ public:
 
 	static bool renderCollisionShape;
 	static bool renderPaths;
-	static int lastTextureApplied;
+	static SDL_Texture *lastTextureApplied;
+
+	// Computed once per renderCall() (replaces the old glColor4f() call
+	// that primitives implicitly picked up from GL state); onRender()
+	// implementations read these instead of `color`/`alpha` directly,
+	// since they already include the render-layer color multiplication.
+	Vector effectiveColor;
+	float effectiveAlpha;
+	SDL_BlendMode currentBlendMode;
 	static bool lastTextureRepeat;
 
 	float width, height;  // Only used by Quads, but stored here for getCullRadius()
