@@ -1511,7 +1511,7 @@ void Core::main(float runTime)
 
 					// Don't do this on Linux, it's not necessary and causes big stalls.
 					//  We don't actually _lose_ the device like Direct3D anyhow.
-					#ifndef BBGE_BUILD_UNIX
+					#if defined(BBGE_BUILD_WINDOWS)
 					if (_fullscreen)
 					{
 						// calls reload device - reloadDevice()

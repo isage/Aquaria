@@ -856,16 +856,9 @@ void messageBox(const std::string& title, const std::string &msg)
 {
 #ifdef BBGE_BUILD_WINDOWS
     MessageBox (0,msg.c_str(),title.c_str(),MB_OK);
-#elif SDL_VERSION_ATLEAST(2,0,0)
+#elif
 	SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_BUTTON_RETURNKEY_DEFAULT, title.c_str(),
 							 msg.c_str(), NULL);
-#elif defined(BBGE_BUILD_MACOSX)
-	cocoaMessageBox(title, msg);
-#elif defined(BBGE_BUILD_UNIX)
-	// !!! FIXME: probably don't want the whole GTK+ dependency in here...
-	fprintf(stderr, "%s: %s\n", title.c_str(), msg.c_str());
-#else
-#error Please define your platform.
 #endif
 }
 
@@ -1113,22 +1106,7 @@ int unpackFile(const std::string &sourcef, const std::string &destf)
 
 void openURL(const std::string &url)
 {
-#ifdef BBGE_BUILD_WINDOWS
-	ShellExecute(NULL, "open", url.c_str(), NULL, NULL, SW_SHOWNORMAL);
-#endif
-#if defined(BBGE_BUILD_MACOSX)
-	CFStringRef str = CFStringCreateWithCString (0, url.c_str(), 0);
-	CFURLRef ref = CFURLCreateWithString(kCFAllocatorDefault, str, NULL);
-	LSOpenCFURLRef(ref, 0);
-	CFRelease(ref);
-	CFRelease(str);
-#elif BBGE_BUILD_UNIX
-	std::string cmd("PATH=$PATH:. xdg-open '");
-	cmd += url;
-	cmd += "'";
-	if (system(cmd.c_str()) != 0)
-		debugLog("system(xdg_open '" + url + "') failed");
-#endif
+    SDL_OpenURL(url.c_str());
 }
 
 void clamp256Col(int *r)
