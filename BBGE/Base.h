@@ -91,7 +91,9 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "Rect.h"
 
 #include "math.h"
+#ifdef BBGE_BUILD_VFS
 #include "ttvfs_stdio.h"
+#endif
 
 #include "tinyxml2.h"
 #include "Refcounted.h"

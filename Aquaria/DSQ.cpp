@@ -53,13 +53,23 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include <dirent.h>
 #include <fcntl.h>
 
+#include <psp2/kernel/clib.h>
+
 static void Linux_CopyTree(const char *src, const char *dst)
 {
-    //printf("Linux_CopyTree('%s', '%s')...\n", src, dst);
+    char cwd[1024];
+    if (getcwd(cwd, sizeof(cwd)) != NULL) {
+        sceClibPrintf("Current working directory: %s\n", cwd);
+    }
+    sceClibPrintf("Linux_CopyTree('%s', '%s')...\n", src, dst);
 
     struct stat statbuf;
     if (stat(src, &statbuf) == -1)
+    {
+        sceClibPrintf("no such file\n");
         return;
+    }
+    
 
     if (S_ISDIR(statbuf.st_mode))
     {
@@ -931,8 +941,8 @@ This build is not yet final, and as such there are a couple things lacking. They
 		Linux_CopyTree(core->adjustFilenameCase(userSettingsFilename).c_str(), core->adjustFilenameCase(fn).c_str());
 
 	fn = getUserDataFolder() + "/_mods";
-	if (!exists(fn))
-		Linux_CopyTree(core->adjustFilenameCase("_mods").c_str(), core->adjustFilenameCase(fn).c_str());
+//	if (!exists(fn))
+//		Linux_CopyTree(core->adjustFilenameCase("_mods").c_str(), core->adjustFilenameCase(fn).c_str());
 #endif
 
 	createDir(getUserDataFolder());
@@ -3829,7 +3839,7 @@ std::string DSQ::getDialogueFilename(const std::string &f)
 {
 	return "dialogue/" + languagePack + "/" + f + ".txt";
 }
-
+/*
 void DSQ::jumpToSection(InStream &inFile, const std::string &section)
 {
 	if (section.empty()) return;
@@ -3853,7 +3863,7 @@ void DSQ::jumpToSection(InStream &inFile, const std::string &section)
 	}
 	debugLog("could not find section [" + section + "]");
 }
-
+*/
 bool DSQ::runScript(const std::string &name, const std::string &function, bool ignoremissing /* = false */)
 {
 	if (!scriptInterface.runScript(name, function, ignoremissing))

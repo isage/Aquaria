@@ -6,8 +6,8 @@
 #ifndef BBGE_SKIP_CONFIG_HEADERS
 
     //#define AQUARIA_DEMO 1
-    #define AQUARIA_BUILD_CONSOLE 1
-    #define AQUARIA_BUILD_SCENEEDITOR 1
+    //#define AQUARIA_BUILD_CONSOLE 1
+    //#define AQUARIA_BUILD_SCENEEDITOR 1
 
     #define AQUARIA_CUSTOM_BUILD_ID (" Build " __DATE__ " - " __TIME__)
 

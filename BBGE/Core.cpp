@@ -272,9 +272,9 @@ void Core::debugLog(const std::string &s)
 	{
 		_logOut << s << std::endl;
 	}
-#ifdef _DEBUG
+//#ifdef _DEBUG
 	std::cout << s << std::endl;
-#endif
+//#endif
 }
 
 #ifdef BBGE_BUILD_WINDOWS
@@ -323,8 +323,16 @@ Core::Core(const std::string &filesystem, const std::string& extraDataDir, int n
 
 	if (userDataSubFolder.empty())
 		userDataSubFolder = appName;
-		
+
 #if defined(BBGE_BUILD_UNIX)
+#if defined(__vita__)
+	userDataFolder = "ux0:/data/aquaria/user/";
+	createDir(userDataFolder);
+	debugLogPath = userDataFolder + "/";
+	createDir(userDataFolder + "/screenshots");
+	std::string prefpath(getPreferencesFolder());
+	createDir(prefpath);
+#else
 	const char *envr = getenv("HOME");
 	if (envr == NULL)
         envr = ".";  // oh well.
@@ -345,7 +353,7 @@ Core::Core(const std::string &filesystem, const std::string& extraDataDir, int n
 	createDir(userDataFolder + "/screenshots");
 	std::string prefpath(getPreferencesFolder());
 	createDir(prefpath);
-
+#endif
 #else
 	debugLogPath = "";
 	userDataFolder = ".";
@@ -499,6 +507,7 @@ void Core::initPlatform(const std::string &filesystem)
 	else
 		debugLog("Failed to chdir to filesystem path " BBGE_DATA_PREFIX + appName);
 #endif
+#ifndef __vita__
 	char path[PATH_MAX];
 	// always a symlink to this process's binary, on modern Linux systems.
 	const ssize_t rc = readlink("/proc/self/exe", path, sizeof (path));
@@ -519,6 +528,7 @@ void Core::initPlatform(const std::string &filesystem)
 				debugLog("Failed to chdir to executable path" + std::string(path));
 		}
 	}
+#endif
 #endif
 #ifdef BBGE_BUILD_WINDOWS
 	if(filesystem.length())

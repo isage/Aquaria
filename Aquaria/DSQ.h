@@ -1394,7 +1394,7 @@ public:
 	void takeScreenshot();
 	void takeScreenshotKey();
 
-	void jumpToSection(InStream &inFile, const std::string &section);
+//	void jumpToSection(InStream &inFile, const std::string &section);
 
 	void generateCollisionMask(RenderObject *r);
 	void toggleRenderCollisionShapes();
