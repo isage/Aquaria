@@ -371,7 +371,7 @@ SongIcon::SongIcon(int note) : Quad(), note(note)
 	//setTexture("Cursor-Sing");
 	std::ostringstream os;
 	os << "Song/NoteSymbol" << note;
-	os.str();
+//	os.str();
 	setTexture(os.str());
 
 	scale = Vector(NOTE_SCALE, NOTE_SCALE);
