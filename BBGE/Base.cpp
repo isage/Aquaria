@@ -856,7 +856,7 @@ void messageBox(const std::string& title, const std::string &msg)
 {
 #ifdef BBGE_BUILD_WINDOWS
     MessageBox (0,msg.c_str(),title.c_str(),MB_OK);
-#elif
+#else
 	SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_BUTTON_RETURNKEY_DEFAULT, title.c_str(),
 							 msg.c_str(), NULL);
 #endif
