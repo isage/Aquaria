@@ -94,7 +94,7 @@ void Joystick::init(int stick)
 
 		if (SDL_IsGamepad(id))
 		{
-			sdl_controller = SDL_OpenGamepad(stick);
+			sdl_controller = SDL_OpenGamepad(id);
 			if (sdl_controller)
 				sdl_joy = SDL_GetGamepadJoystick(sdl_controller);
 		}
@@ -115,7 +115,7 @@ void Joystick::init(int stick)
 		}
 
 		if (!sdl_joy)
-			sdl_joy = SDL_OpenJoystick(stick);
+			sdl_joy = SDL_OpenJoystick(id);
 
 		if (sdl_joy)
 		{
@@ -170,6 +170,33 @@ void Joystick::rumble(float leftMotor, float rightMotor, float time)
 				clearRumbleTime = -1;
 				SDL_StopHapticRumble(sdl_haptic);
 			}
+		}
+		else
+		{
+		    if(sdl_controller)
+		    {
+		        const float power = (leftMotor + rightMotor) / 2.0f;
+		        if ((power > 0.0f) && (time > 0.0f))
+		        {
+		            SDL_RumbleGamepad(sdl_controller, leftMotor * 0xFFFF, rightMotor * 0xFFFF, (Uint32) (time * 1000.0f));
+		        }
+		        else
+		        {
+		            SDL_RumbleGamepad(sdl_controller, 0, 0, (Uint32) (time * 1000.0f));
+		        }
+		    }
+		    else if(sdl_joy)
+		    {
+		        const float power = (leftMotor + rightMotor) / 2.0f;
+		        if ((power > 0.0f) && (time > 0.0f))
+		        {
+		            SDL_RumbleJoystick(sdl_joy, leftMotor * 0xFFFF, rightMotor * 0xFFFF, (Uint32) (time * 1000.0f));
+		        }
+		        else
+		        {
+		            SDL_RumbleJoystick(sdl_joy, 0, 0, (Uint32) (time * 1000.0f));
+		        }
+		    }
 		}
 
 	}
