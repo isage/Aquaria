@@ -268,12 +268,13 @@ void Core::messageBox(const std::string &title, const std::string &msg)
 
 void Core::debugLog(const std::string &s)
 {
+    std::string log = "[" + std::to_string(SDL_GetTicks()) + "] " + s;
 	if (debugLogActive)
 	{
-		_logOut << s << std::endl;
+		_logOut << log << std::endl;
 	}
 #ifdef _DEBUG
-	std::cout << s << std::endl;
+	std::cout << log << std::endl;
 #endif
 }
 
