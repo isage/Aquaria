@@ -4126,6 +4126,7 @@ void DSQ::bindInput()
 	armb = user.control.actionSet.getActionInputByName("rmb");
 
 	user.control.actionSet.importAction(this, "Escape",		ACTION_ESC);
+	user.control.actionSet.importAction(this, "PrimaryAction",		ACTION_PRIMARY);
 
 #if defined(BBGE_BUILD_MACOSX)
 	addAction(MakeFunctionEvent(DSQ, instantQuit), KEY_Q, 1);
@@ -4189,13 +4190,14 @@ void DSQ::onUpdate(float dt)
 			while (isCutscenePaused())
 			{
 				pollEvents();
+				core->joystick.update(sec);
 				ActionMapper::onUpdate(sec);
 				SDL_Delay(int(sec*1000));
 				render();
 				showBuffer();
 				resetTimer();
 
-				if (_canSkipCutscene && core->getKeyState(KEY_S))
+				if (_canSkipCutscene && (core->getKeyState(KEY_S) || isActing(ACTION_PRIMARY) || (almb && ActionMapper::getKeyState(almb->joy[0])) ))
 				{
 					skippingCutscene = true;
 					settings.renderOn = false;
