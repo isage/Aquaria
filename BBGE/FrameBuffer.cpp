@@ -20,6 +20,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 */
 #include "FrameBuffer.h"
 #include "Core.h"
+#include "PerfLog.h"
 
 // Render-to-texture via SDL3's SDL_TEXTUREACCESS_TARGET textures, replacing
 // the old GL_EXT_framebuffer_object implementation. Shared by AfterEffect,
@@ -132,6 +133,7 @@ void FrameBuffer::startCapture()
 
 	savedTarget = SDL_GetRenderTarget(renderer);
 	SDL_SetRenderTarget(renderer, texture);
+	PerfLog::countRenderTargetSwitch();
 
 	SDL_SetRenderDrawColor(renderer, 0, 0, 0, 0);
 	SDL_RenderClear(renderer);
@@ -145,6 +147,7 @@ void FrameBuffer::endCapture()
 	if (!renderer) return;
 
 	SDL_SetRenderTarget(renderer, savedTarget);
+	PerfLog::countRenderTargetSwitch();
 	savedTarget = 0;
 }
 
@@ -157,6 +160,7 @@ void FrameBuffer::copyFrom(FrameBuffer &other)
 
 	SDL_Texture *prevTarget = SDL_GetRenderTarget(renderer);
 	SDL_SetRenderTarget(renderer, texture);
+	PerfLog::countRenderTargetSwitch();
 
 	SDL_BlendMode prevBlend = SDL_BLENDMODE_BLEND;
 	SDL_GetTextureBlendMode(other.texture, &prevBlend);
@@ -165,6 +169,7 @@ void FrameBuffer::copyFrom(FrameBuffer &other)
 	SDL_SetTextureBlendMode(other.texture, prevBlend);
 
 	SDL_SetRenderTarget(renderer, prevTarget);
+	PerfLog::countRenderTargetSwitch();
 }
 
 void FrameBuffer::unloadDevice()

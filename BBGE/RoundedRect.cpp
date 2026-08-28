@@ -19,6 +19,8 @@ along with this program; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 */
 #include "RoundedRect.h"
+#include "RenderState.h"
+#include "PerfLog.h"
 #include "Core.h"
 #include "TTFFont.h"
 
@@ -110,8 +112,10 @@ void RoundedRect::onRender()
 	SDL_Renderer *renderer = core->getRenderer();
 	if (!renderer) return;
 
-	std::vector<SDL_Vertex> verts;
-	std::vector<int> indices;
+	static std::vector<SDL_Vertex> verts;
+	verts.clear();
+	static std::vector<int> indices;
+	indices.clear();
 	SDL_FColor col = {effectiveColor.x, effectiveColor.y, effectiveColor.z, effectiveAlpha};
 
 	// helper: push one quad (4 local-space corners, already in the same
@@ -168,8 +172,9 @@ void RoundedRect::onRender()
 
 	if (!verts.empty())
 	{
-		SDL_SetRenderDrawBlendMode(renderer, currentBlendMode);
+		RenderState::setRenderDrawBlendMode(renderer, currentBlendMode);
 		SDL_RenderGeometry(renderer, NULL, verts.data(), (int)verts.size(), indices.data(), (int)indices.size());
+		PerfLog::countDrawCall();
 	}
 }
 
@@ -271,7 +276,7 @@ void RoundButton::onRender()
 	glm::vec4 lr = core->transform.transformPoint( w2,  h2);
 	glm::vec4 ll = core->transform.transformPoint(-w2,  h2);
 
-	SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_BLEND);
+	RenderState::setRenderDrawBlendMode(renderer, SDL_BLENDMODE_BLEND);
 	SDL_SetRenderDrawColorFloat(renderer, effectiveColor.x, effectiveColor.y, effectiveColor.z, effectiveAlpha);
 	SDL_FPoint pts[5] = {{ul.x,ul.y}, {ur.x,ur.y}, {lr.x,lr.y}, {ll.x,ll.y}, {ul.x,ul.y}};
 	SDL_RenderLines(renderer, pts, 5);
@@ -286,6 +291,7 @@ void RoundButton::onRender()
 		v[0].color = v[1].color = v[2].color = v[3].color = {1,1,1,0.5f};
 		static const int idx[6] = {0,1,2,0,2,3};
 		SDL_RenderGeometry(renderer, NULL, v, 4, idx, 6);
+		PerfLog::countDrawCall();
 	}
 }
 

@@ -19,6 +19,7 @@ along with this program; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 */
 #include "Segmented.h"
+#include "RenderState.h"
 #include "../BBGE/Core.h"
 
 Strand::Strand(const Vector &position, int segs, int dist) : RenderObject(), Segmented(dist, dist)
@@ -64,7 +65,7 @@ void Strand::onRender()
 	// after onRender() returns, so there's nothing to restore here either.
 	core->transform.translate(-position.x, -position.y, 0);
 
-	SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_BLEND);
+	RenderState::setRenderDrawBlendMode(renderer, SDL_BLENDMODE_BLEND);
 
 	// Use fixed-point math to speed things up.  --achurch
 	unsigned int r = (unsigned int)(color.x * (255<<8));

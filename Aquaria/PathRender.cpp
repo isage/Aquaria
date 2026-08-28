@@ -19,6 +19,8 @@ along with this program; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 */
 #include "GridRender.h"
+#include "RenderState.h"
+#include "PerfLog.h"
 #include <vector>
 
 PathRender::PathRender() : RenderObject()
@@ -38,7 +40,7 @@ void PathRender::onRender()
 	SDL_Renderer *renderer = core->getRenderer();
 	if (!renderer) return;
 
-	SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_BLEND);
+	RenderState::setRenderDrawBlendMode(renderer, SDL_BLENDMODE_BLEND);
 
 	for (int i = 0; i < pathcount; i++)
 	{
@@ -85,7 +87,7 @@ void PathRender::onRender()
 					v[3].position={c3.x,c3.y}; v[3].tex_coord={0,0}; v[3].color=fillCol;
 					static const int idx[6] = {0,1,2,0,2,3};
 					SDL_RenderGeometry(renderer, NULL, v, 4, idx, 6);
-
+					PerfLog::countDrawCall();
 					SDL_SetRenderDrawColorFloat(renderer, 1, 1, 1, 0.3f);
 					SDL_FPoint outline[5] = {{c3.x,c3.y}, {c2.x,c2.y}, {c1.x,c1.y}, {c0.x,c0.y}, {c3.x,c3.y}};
 					SDL_RenderLines(renderer, outline, 5);

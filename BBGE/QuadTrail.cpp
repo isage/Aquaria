@@ -19,6 +19,8 @@ along with this program; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 */
 #include "QuadTrail.h"
+#include "RenderState.h"
+#include "PerfLog.h"
 #include "Core.h"
 #include <assert.h>
 #include <vector>
@@ -73,7 +75,8 @@ void QuadTrail::onRender()
 
 	// GL_QUAD_STRIP -> triangle list, one quad per consecutive pair of
 	// left/right edge points (same conversion as Quad's strip mode).
-	std::vector<SDL_Vertex> verts;
+	static std::vector<SDL_Vertex> verts;
+	verts.clear();
 	verts.reserve(points.size() * 2);
 
 	for (Points::iterator i = points.begin(); i != points.end(); i++)
@@ -113,7 +116,8 @@ void QuadTrail::onRender()
 
 	if (verts.size() >= 4)
 	{
-		std::vector<int> indices;
+		static std::vector<int> indices;
+		indices.clear();
 		size_t numQuads = verts.size()/2 - 1;
 		indices.reserve(numQuads * 6);
 		for (size_t q = 0; q < numQuads; q++)
@@ -124,10 +128,11 @@ void QuadTrail::onRender()
 		}
 
 		if (tex)
-			SDL_SetTextureBlendMode(tex, currentBlendMode);
+			RenderState::setTextureBlendMode(tex, currentBlendMode);
 		else
-			SDL_SetRenderDrawBlendMode(renderer, currentBlendMode);
+			RenderState::setRenderDrawBlendMode(renderer, currentBlendMode);
 		SDL_RenderGeometry(renderer, tex, verts.data(), (int)verts.size(), indices.data(), (int)indices.size());
+		PerfLog::countDrawCall();
 	}
 }
 

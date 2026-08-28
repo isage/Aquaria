@@ -19,6 +19,7 @@ along with this program; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 */
 #include "Base.h"
+#include "PerfLog.h"
 #include "Core.h"
 #include <algorithm>
 #include <signal.h>
@@ -358,8 +359,10 @@ void drawCircle(float radius, int stepSize, float r, float g, float b, float a)
 	// GL_POLYGON (a convex N-gon fan implied by its point ring) -> an
 	// explicit triangle fan: local-origin center vertex + the ring,
 	// connecting consecutive ring points to the center.
-	std::vector<SDL_Vertex> verts;
-	std::vector<int> indices;
+	static std::vector<SDL_Vertex> verts;
+	verts.clear();
+	static std::vector<int> indices;
+	indices.clear();
 	SDL_FColor col = {r, g, b, a};
 
 	glm::vec4 center = core->transform.transformPoint(0, 0);
@@ -389,6 +392,7 @@ void drawCircle(float radius, int stepSize, float r, float g, float b, float a)
 
 	if (!indices.empty())
 		SDL_RenderGeometry(renderer, NULL, verts.data(), (int)verts.size(), indices.data(), (int)indices.size());
+		PerfLog::countDrawCall();
 }
 
 void exit_error(const std::string &message)

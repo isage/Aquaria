@@ -19,6 +19,8 @@ along with this program; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 */
 #include "../BBGE/MathFunctions.h"
+#include "RenderState.h"
+#include "PerfLog.h"
 
 #include "Hair.h"
 #include "DSQ.h"
@@ -134,8 +136,10 @@ void Hair::onRender()
 	Vector pl, pr;
 
 	// GL_QUAD_STRIP (2 verts per hair node) -> triangle list.
-	std::vector<SDL_Vertex> verts;
-	std::vector<int> indices;
+	static std::vector<SDL_Vertex> verts;
+	verts.clear();
+	static std::vector<int> indices;
+	indices.clear();
 	verts.reserve(hairNodes.size()*2);
 	indices.reserve((hairNodes.size()-1)*6);
 
@@ -169,9 +173,10 @@ void Hair::onRender()
 
 	if (!verts.empty())
 	{
-		if (tex) SDL_SetTextureBlendMode(tex, currentBlendMode);
-		else SDL_SetRenderDrawBlendMode(renderer, currentBlendMode);
+		if (tex) RenderState::setTextureBlendMode(tex, currentBlendMode);
+		else RenderState::setRenderDrawBlendMode(renderer, currentBlendMode);
 		SDL_RenderGeometry(renderer, tex, verts.data(), (int)verts.size(), indices.data(), (int)indices.size());
+		PerfLog::countDrawCall();
 	}
 }
 

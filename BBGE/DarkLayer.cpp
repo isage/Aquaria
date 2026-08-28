@@ -19,6 +19,8 @@ along with this program; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 */
 #include "DarkLayer.h"
+#include "RenderState.h"
+#include "PerfLog.h"
 #include "Core.h"
 
 DarkLayer::DarkLayer()
@@ -121,9 +123,9 @@ void DarkLayer::render()
 		// subtractive blend! (using color) - GL_ZERO,GL_SRC_COLOR is exactly
 		// SDL_BLENDMODE_MOD's formula.
 		if (tex)
-			SDL_SetTextureBlendMode(tex, SDL_BLENDMODE_MOD);
+			RenderState::setTextureBlendMode(tex, SDL_BLENDMODE_MOD);
 		else
-			SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_MOD);
+			RenderState::setRenderDrawBlendMode(renderer, SDL_BLENDMODE_MOD);
 
 		float width  =  core->getWindowWidth();
 		float height =  core->getWindowHeight();
@@ -150,7 +152,7 @@ void DarkLayer::render()
 		static const int idx[6] = {0,1,2,0,2,3};
 
 		SDL_RenderGeometry(renderer, tex, v, 4, idx, 6);
-
+		PerfLog::countDrawCall();
 		RenderObject::lastTextureApplied = 0;
 	}
 }

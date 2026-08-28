@@ -19,6 +19,8 @@ along with this program; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 */
 #include "ScreenTransition.h"
+#include "RenderState.h"
+#include "PerfLog.h"
 #include "Core.h"
 
 ScreenTransition::ScreenTransition() : RenderObject()
@@ -130,8 +132,8 @@ void ScreenTransition::onRender()
 
 	static const int idx[6] = {0,1,2,0,2,3};
 
-	SDL_SetTextureBlendMode(tex, SDL_BLENDMODE_BLEND);
+	RenderState::setTextureBlendMode(tex, SDL_BLENDMODE_BLEND);
 	SDL_RenderGeometry(renderer, tex, v, 4, idx, 6);
-
+	PerfLog::countDrawCall();
 	RenderObject::lastTextureApplied = 0;
 }

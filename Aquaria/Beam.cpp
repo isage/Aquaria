@@ -19,6 +19,8 @@ along with this program; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 */
 #include "Shot.h"
+#include "RenderState.h"
+#include "PerfLog.h"
 #include "Game.h"
 #include "Avatar.h"
 
@@ -164,9 +166,10 @@ void Beam::onRender()
 	v[3].position={p3.x,p3.y}; v[3].tex_coord={0,1}; v[3].color=col;
 	static const int idx[6] = {0,1,2,0,2,3};
 
-	if (tex) SDL_SetTextureBlendMode(tex, currentBlendMode);
-	else SDL_SetRenderDrawBlendMode(renderer, currentBlendMode);
+	if (tex) RenderState::setTextureBlendMode(tex, currentBlendMode);
+	else RenderState::setRenderDrawBlendMode(renderer, currentBlendMode);
 	SDL_RenderGeometry(renderer, tex, v, 4, idx, 6);
+	PerfLog::countDrawCall();
 }
 
 void Beam::onUpdate(float dt)

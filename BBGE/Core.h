@@ -692,6 +692,7 @@ public:
 	void setClearColor(const Vector &c);
 	const Vector &getClearColor() const { return clearColor; }
 	Vector getClearColor();
+	const std::string &getDebugLogPath() const { return debugLogPath; }
 	int flipMouseButtons;
 	void initFrameBuffer();
 	FrameBuffer frameBuffer;

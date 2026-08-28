@@ -19,6 +19,8 @@ along with this program; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 */
 #include "Quad.h"
+#include "RenderState.h"
+#include "PerfLog.h"
 #include "Core.h"
 
 #include <assert.h>
@@ -412,8 +414,10 @@ void Quad::renderGrid()
 	if (!renderer) return;
 	SDL_Texture *tex = textureOverride ? textureOverride : (texture ? texture->sdlTexture : 0);
 
-	std::vector<SDL_Vertex> verts;
-	std::vector<int> indices;
+	static std::vector<SDL_Vertex> verts;
+	verts.clear();
+	static std::vector<int> indices;
+	indices.clear();
 	verts.reserve((size_t)(xDivs-1) * (yDivs-1) * 4);
 	indices.reserve((size_t)(xDivs-1) * (yDivs-1) * 6);
 
@@ -456,10 +460,11 @@ void Quad::renderGrid()
 	if (!verts.empty())
 	{
 		if (tex)
-			SDL_SetTextureBlendMode(tex, currentBlendMode);
+			RenderState::setTextureBlendMode(tex, currentBlendMode);
 		else
-			SDL_SetRenderDrawBlendMode(renderer, currentBlendMode);
+			RenderState::setRenderDrawBlendMode(renderer, currentBlendMode);
 		SDL_RenderGeometry(renderer, tex, verts.data(), (int)verts.size(), indices.data(), (int)indices.size());
+		PerfLog::countDrawCall();
 	}
 }
 
@@ -489,7 +494,8 @@ void Quad::onRender()
 
 			// GL_QUAD_STRIP -> triangle list: strip.size() points define
 			// strip.size()-1 quads, each sharing an edge with the next.
-			std::vector<SDL_Vertex> verts;
+			static std::vector<SDL_Vertex> verts;
+			verts.clear();
 			verts.reserve(strip.size() * 2);
 			SDL_FColor col = {effectiveColor.x, effectiveColor.y, effectiveColor.z, effectiveAlpha};
 
@@ -504,7 +510,8 @@ void Quad::onRender()
 				v.position = {bot.x, bot.y}; v.tex_coord = {texBits*(float)i, 1}; verts.push_back(v);
 			}
 
-			std::vector<int> indices;
+			static std::vector<int> indices;
+			indices.clear();
 			indices.reserve((strip.size()-1) * 6);
 			for (size_t i = 0; i + 1 < strip.size(); i++)
 			{
@@ -516,10 +523,11 @@ void Quad::onRender()
 			}
 
 			if (tex)
-				SDL_SetTextureBlendMode(tex, currentBlendMode);
+				RenderState::setTextureBlendMode(tex, currentBlendMode);
 			else
-				SDL_SetRenderDrawBlendMode(renderer, currentBlendMode);
+				RenderState::setRenderDrawBlendMode(renderer, currentBlendMode);
 			SDL_RenderGeometry(renderer, tex, verts.data(), (int)verts.size(), indices.data(), (int)indices.size());
+			PerfLog::countDrawCall();
 		}
 	}
 	else
@@ -582,11 +590,12 @@ void Quad::onRender()
 				static const int indices[6] = { 0, 1, 2, 0, 2, 3 };
 
 				if (tex)
-					SDL_SetTextureBlendMode(tex, currentBlendMode);
+					RenderState::setTextureBlendMode(tex, currentBlendMode);
 				else
-					SDL_SetRenderDrawBlendMode(renderer, currentBlendMode);
+					RenderState::setRenderDrawBlendMode(renderer, currentBlendMode);
 
 				SDL_RenderGeometry(renderer, tex, verts, 4, indices, 6);
+				PerfLog::countDrawCall();
 			}
 		}
 		else
@@ -600,7 +609,7 @@ void Quad::onRender()
 		SDL_Renderer *renderer = core->getRenderer();
 		if (renderer)
 		{
-			SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_BLEND);
+			RenderState::setRenderDrawBlendMode(renderer, SDL_BLENDMODE_BLEND);
 
 			if (renderCenter)
 			{

@@ -19,6 +19,7 @@ along with this program; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 */
 #include "Quad.h"
+#include "RenderState.h"
 #include "Core.h"
 
 
@@ -55,7 +56,7 @@ void OutlineRect::onRender()
 	glm::vec4 ur = core->transform.transformPoint( w2,-h2);
 	glm::vec4 lr = core->transform.transformPoint( w2, h2);
 
-	SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_BLEND);
+	RenderState::setRenderDrawBlendMode(renderer, SDL_BLENDMODE_BLEND);
 	SDL_SetRenderDrawColorFloat(renderer, effectiveColor.x, effectiveColor.y, effectiveColor.z, effectiveAlpha);
 
 	SDL_FPoint lPts[2] = {{ul.x, ul.y}, {ll.x, ll.y}};

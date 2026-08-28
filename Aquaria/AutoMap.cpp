@@ -19,6 +19,7 @@ along with this program; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 */
 #include "AutoMap.h"
+#include "RenderState.h"
 #include "DSQ.h"
 #include "Game.h"
 #include "Avatar.h"
@@ -293,7 +294,7 @@ void AutoMap::onRender()
 
 	if (alphaValue > 0)
 	{
-		SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_BLEND);
+		RenderState::setRenderDrawBlendMode(renderer, SDL_BLENDMODE_BLEND);
 
 		for (int y = 0; y < ysz; y += skip)
 		{

@@ -22,6 +22,8 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #define BBGE_QUAD_DRAW_HELPER_H
 
 #include "Core.h"
+#include "RenderState.h"
+#include "PerfLog.h"
 
 // Replaces the extremely common old-code idiom, seen dozens of times
 // across the bespoke gameplay-visual renderers (MiniMapRender,
@@ -67,10 +69,11 @@ inline void drawTexturedQuad(SDL_Renderer *renderer, SDL_Texture *tex,
 	static const int idx[6] = {0,1,2,0,2,3};
 
 	if (tex)
-		SDL_SetTextureBlendMode(tex, blend);
+		RenderState::setTextureBlendMode(tex, blend);
 	else
-		SDL_SetRenderDrawBlendMode(renderer, blend);
+		RenderState::setRenderDrawBlendMode(renderer, blend);
 	SDL_RenderGeometry(renderer, tex, v, 4, idx, 6);
+	PerfLog::countDrawCall();
 }
 
 // Convenience overload for the common "quad centered at (cx,cy), texture's

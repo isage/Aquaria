@@ -19,6 +19,8 @@ along with this program; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 */
 #include <assert.h>
+#include "RenderState.h"
+#include "PerfLog.h"
 #include <vector>
 
 #include "Effects.h"
@@ -112,8 +114,8 @@ void PostProcessingFX::render()
 				SDL_Texture *tex = core->frameBuffer.getTexture();
 
 				SDL_BlendMode blend = (blendType == 1) ? SDL_BLENDMODE_ADD : SDL_BLENDMODE_BLEND;
-				if (tex) SDL_SetTextureBlendMode(tex, blend);
-				else SDL_SetRenderDrawBlendMode(renderer, blend);
+				if (tex) RenderState::setTextureBlendMode(tex, blend);
+				else RenderState::setRenderDrawBlendMode(renderer, blend);
 
 				float percentX = pw, percentY = ph;
 
@@ -121,8 +123,10 @@ void PostProcessingFX::render()
 				float spost = 0.0f;										// Starting Texture Coordinate Offset
 				float alphadec = alpha / blurTimes;
 
-				std::vector<SDL_Vertex> verts;
-				std::vector<int> indices;
+				static std::vector<SDL_Vertex> verts;
+				verts.clear();
+				static std::vector<int> indices;
+				indices.clear();
 				verts.reserve(blurTimes*4);
 				indices.reserve(blurTimes*6);
 
@@ -151,7 +155,7 @@ void PostProcessingFX::render()
 
 				if (!verts.empty())
 					SDL_RenderGeometry(renderer, tex, verts.data(), (int)verts.size(), indices.data(), (int)indices.size());
-
+					PerfLog::countDrawCall();
 				RenderObject::lastTextureApplied = 0;
 			}
 			break;

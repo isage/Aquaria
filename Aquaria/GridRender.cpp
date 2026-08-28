@@ -19,6 +19,8 @@ along with this program; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 */
 #include "GridRender.h"
+#include "RenderState.h"
+#include "PerfLog.h"
 #include "Game.h"
 #include <vector>
 
@@ -87,8 +89,10 @@ void GridRender::onRender()
 	if (startY > endY)
 		return;
 
-	std::vector<SDL_Vertex> verts;
-	std::vector<int> indices;
+	static std::vector<SDL_Vertex> verts;
+	verts.clear();
+	static std::vector<int> indices;
+	indices.clear();
 	SDL_FColor col = {effectiveColor.x, effectiveColor.y, effectiveColor.z, effectiveAlpha};
 
 	for (int x = startX; x <= endX; ++x)
@@ -132,8 +136,9 @@ void GridRender::onRender()
 		SDL_Renderer *renderer = core->getRenderer();
 		if (renderer)
 		{
-			SDL_SetRenderDrawBlendMode(renderer, currentBlendMode);
+			RenderState::setRenderDrawBlendMode(renderer, currentBlendMode);
 			SDL_RenderGeometry(renderer, NULL, verts.data(), (int)verts.size(), indices.data(), (int)indices.size());
+			PerfLog::countDrawCall();
 		}
 	}
 }

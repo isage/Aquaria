@@ -19,6 +19,7 @@ along with this program; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 */
 #include "Web.h"	
+#include "RenderState.h"
 #include "DSQ.h"
 #include "Game.h"
 #include "Avatar.h"
@@ -157,7 +158,7 @@ void Web::onRender()
 	SDL_Renderer *renderer = core->getRenderer();
 	if (!renderer || points.size() < 2) return;
 
-	SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_BLEND);
+	RenderState::setRenderDrawBlendMode(renderer, SDL_BLENDMODE_BLEND);
 	SDL_SetRenderDrawColorFloat(renderer, 1, 1, 1, 0.5f*alpha.x);
 
 	std::vector<SDL_FPoint> pts;

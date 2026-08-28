@@ -19,6 +19,8 @@ along with this program; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 */
 #include "RenderObject.h"
+#include "RenderState.h"
+#include "PerfLog.h"
 #include "Core.h"
 #include "MathFunctions.h"
 
@@ -711,7 +713,7 @@ void RenderObject::renderCollision()
 
 	if (!collisionRects.empty())
 	{
-		SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_BLEND);
+		RenderState::setRenderDrawBlendMode(renderer, SDL_BLENDMODE_BLEND);
 		SDL_SetRenderDrawColorFloat(renderer, 1.0f, 0.5f, 1.0f, 0.5f);
 
 		for (int i = 0; i < collisionRects.size(); i++)
@@ -731,7 +733,7 @@ void RenderObject::renderCollision()
 			v[3].position={p3.x,p3.y}; v[3].tex_coord={0,0}; v[3].color=col;
 			static const int idx[6] = {0,1,2,0,2,3};
 			SDL_RenderGeometry(renderer, NULL, v, 4, idx, 6);
-
+			PerfLog::countDrawCall();
 			// TODO: the 4 corner points (glPointSize(5)) have no direct SDL_RenderGeometry equivalent
 		}
 	}
@@ -742,7 +744,7 @@ void RenderObject::renderCollision()
 		core->loadBaseTransform();
 		core->setupRenderPositionAndScale();
 
-		SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_BLEND);
+		RenderState::setRenderDrawBlendMode(renderer, SDL_BLENDMODE_BLEND);
 
 		for (int i = 0; i < transformedCollisionMask.size(); i++)
 		{
@@ -767,7 +769,7 @@ void RenderObject::renderCollision()
 		core->transform.translate(position.x+offset.x, position.y+offset.y, 0);
 		core->transform.translate(internalOffset.x, internalOffset.y, 0);
 
-		SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_BLEND);
+		RenderState::setRenderDrawBlendMode(renderer, SDL_BLENDMODE_BLEND);
 		drawCircle(collideRadius, 8, 1, 0, 0, 0.5f);
 
 		core->transform.popMatrix();

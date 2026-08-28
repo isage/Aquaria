@@ -19,6 +19,8 @@ along with this program; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 */
 #include "../BBGE/MathFunctions.h"
+#include "RenderState.h"
+#include "PerfLog.h"
 #include "../BBGE/ImageLoader.h"
 #include "../BBGE/Gradient.h"
 #include "../BBGE/DebugFont.h"
@@ -139,8 +141,9 @@ void WarpAreaRender::onRender()
 			v[3].position={p3.x,p3.y}; v[3].tex_coord={0,0}; v[3].color=col;
 			static const int idx[6] = {0,1,2,0,2,3};
 
-			SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_BLEND);
+			RenderState::setRenderDrawBlendMode(renderer, SDL_BLENDMODE_BLEND);
 			SDL_RenderGeometry(renderer, NULL, v, 4, idx, 6);
+			PerfLog::countDrawCall();
 		}
 
 		core->transform.popMatrix();

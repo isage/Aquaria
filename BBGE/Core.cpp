@@ -23,6 +23,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "AfterEffect.h"
 #include "Particles.h"
 #include "TTFFont.h"
+#include "PerfLog.h"
 
 #include <time.h>
 #include <iostream>
@@ -1601,11 +1602,20 @@ void Core::main(float runTime)
 				darkLayer.preRender();
 			}
 
+			// PerfLog begins here, not inside Core::render() itself -
+			// render() can be called nested (DarkLayer::preRender() just
+			// above does exactly that), and beginFrame()/endFrame() are
+			// only meaningful wrapping the single outermost, actually-
+			// presented frame per iteration of this loop.
+			PerfLog::beginFrame();
+
 			if (verbose) debugLog("render");
 			render();
 
 			if (verbose) debugLog("showBuffer");
 			showBuffer();
+
+			PerfLog::endFrame();
 
 			BBGE_PROF(STOP);
 

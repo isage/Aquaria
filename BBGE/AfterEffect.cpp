@@ -19,6 +19,8 @@ along with this program; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 */
 #include "AfterEffect.h"
+#include "RenderState.h"
+#include "PerfLog.h"
 //#include "math.h"
 
 #include <assert.h>
@@ -172,7 +174,7 @@ void AfterEffectManager::render()
 	SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
 	SDL_RenderClear(renderer);
 
-	SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_NONE);
+	RenderState::setRenderDrawBlendMode(renderer, SDL_BLENDMODE_NONE);
 	renderGrid(xf);
 }
 
@@ -200,8 +202,10 @@ void AfterEffectManager::renderGrid(const RenderTransformStack &xf)
 	const int cellsY = yDivs - 1;
 	if (cellsX <= 0 || cellsY <= 0) return;
 
-	std::vector<SDL_Vertex> verts;
-	std::vector<int> indices;
+	static std::vector<SDL_Vertex> verts;
+	verts.clear();
+	static std::vector<int> indices;
+	indices.clear();
 	verts.reserve((size_t)cellsX * cellsY * 4);
 	indices.reserve((size_t)cellsX * cellsY * 6);
 
@@ -236,7 +240,7 @@ void AfterEffectManager::renderGrid(const RenderTransformStack &xf)
 	}
 
 	SDL_RenderGeometry(renderer, tex, verts.data(), (int)verts.size(), indices.data(), (int)indices.size());
-
+	PerfLog::countDrawCall();
 	RenderObject::lastTextureApplied = 0;
 }
 

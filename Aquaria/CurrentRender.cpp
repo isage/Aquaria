@@ -19,6 +19,8 @@ along with this program; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 */
 #include "GridRender.h"
+#include "RenderState.h"
+#include "PerfLog.h"
 
 #include "../BBGE/AfterEffect.h"
 
@@ -135,10 +137,11 @@ void CurrentRender::onRender()
 						};
 
 						if (tex)
-							SDL_SetTextureBlendMode(tex, currentBlendMode);
+							RenderState::setTextureBlendMode(tex, currentBlendMode);
 						else
-							SDL_SetRenderDrawBlendMode(renderer, currentBlendMode);
+							RenderState::setRenderDrawBlendMode(renderer, currentBlendMode);
 						SDL_RenderGeometry(renderer, tex, verts, 8, idx, 18);
+						PerfLog::countDrawCall();
 					}
 				}
 			}
