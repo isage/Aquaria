@@ -155,8 +155,8 @@ void Hair::onRender()
 			pr = diffVec.getPerpendicularRight();
 		}
 
-		glm::vec4 wl = core->transform.transformPoint(hairNodes[i].position.x + pl.x, hairNodes[i].position.y + pl.y);
-		glm::vec4 wr = core->transform.transformPoint(hairNodes[i].position.x + pr.x, hairNodes[i].position.y + pr.y);
+		glm::vec3 wl = core->transform.transformPoint(hairNodes[i].position.x + pl.x, hairNodes[i].position.y + pl.y);
+		glm::vec3 wr = core->transform.transformPoint(hairNodes[i].position.x + pr.x, hairNodes[i].position.y + pr.y);
 
 		SDL_Vertex v;
 		v.color = col;

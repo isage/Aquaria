@@ -41,13 +41,28 @@ void Vector::rotate2DRad(float rad)
 
 Vector getRotatedVector(const Vector &vec, float rot)
 {
-    const glm::mat4 matrix =
-        glm::rotate(glm::mat4(1.0f), rot, glm::vec3(0.0f, 0.0f, 1.0f));
+    // Step 4 of the performance optimization plan: converted from
+    // glm::mat4/vec4 to glm::mat3/vec3, matching RenderTransformStack's
+    // own migration (see BBGE/RenderTransform.h for the full reasoning
+    // and verification this codebase's rotations are Z-axis only). A
+    // rotation around the Z axis mathematically cannot affect the Z
+    // component of the point it's applied to - that's an intrinsic
+    // property of rotating around an axis, not something specific to
+    // this codebase that needs separate verification - so vec.z is
+    // preserved directly here rather than round-tripped through the
+    // matrix multiply, exactly matching what the old mat4 version
+    // already computed (it multiplied vec.z through a rotation matrix
+    // whose Z row/column is the identity for a Z-axis rotation, which
+    // is just a longer way of leaving it unchanged).
+    const glm::mat3 matrix =
+        glm::mat3(cosf(rot * (3.14159265358979323846f / 180.0f)), sinf(rot * (3.14159265358979323846f / 180.0f)), 0.0f,
+                  -sinf(rot * (3.14159265358979323846f / 180.0f)), cosf(rot * (3.14159265358979323846f / 180.0f)), 0.0f,
+                  0.0f, 0.0f, 1.0f);
 
-    const glm::vec4 result =
-        matrix * glm::vec4(vec.x, vec.y, vec.z, 1.0f);
+    const glm::vec3 result =
+        matrix * glm::vec3(vec.x, vec.y, 1.0f);
 
-    return Vector(result.x, result.y, result.z);
+    return Vector(result.x, result.y, vec.z);
 }
 
 // note update this from float lerp

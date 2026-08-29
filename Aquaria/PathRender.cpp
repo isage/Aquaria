@@ -59,7 +59,7 @@ void PathRender::onRender()
 			pts.reserve(p->nodes.size());
 			for (int n = 0; n < p->nodes.size(); n++)
 			{
-				glm::vec4 wp = core->transform.transformPoint(p->nodes[n].position.x, p->nodes[n].position.y);
+				glm::vec3 wp = core->transform.transformPoint(p->nodes[n].position.x, p->nodes[n].position.y);
 				pts.push_back({wp.x, wp.y});
 			}
 			SDL_SetRenderDrawColorFloat(renderer, lineR, lineG, lineB, 0.75f);
@@ -74,10 +74,10 @@ void PathRender::onRender()
 			{
 				if (p->pathShape == PATHSHAPE_RECT)
 				{
-					glm::vec4 c0 = core->transform.transformPoint(nd->position.x+p->rect.x1, nd->position.y+p->rect.y2);
-					glm::vec4 c1 = core->transform.transformPoint(nd->position.x+p->rect.x2, nd->position.y+p->rect.y2);
-					glm::vec4 c2 = core->transform.transformPoint(nd->position.x+p->rect.x2, nd->position.y+p->rect.y1);
-					glm::vec4 c3 = core->transform.transformPoint(nd->position.x+p->rect.x1, nd->position.y+p->rect.y1);
+					glm::vec3 c0 = core->transform.transformPoint(nd->position.x+p->rect.x1, nd->position.y+p->rect.y2);
+					glm::vec3 c1 = core->transform.transformPoint(nd->position.x+p->rect.x2, nd->position.y+p->rect.y2);
+					glm::vec3 c2 = core->transform.transformPoint(nd->position.x+p->rect.x2, nd->position.y+p->rect.y1);
+					glm::vec3 c3 = core->transform.transformPoint(nd->position.x+p->rect.x1, nd->position.y+p->rect.y1);
 
 					SDL_FColor fillCol = {0.5f, 0.5f, 1, 0.2f};
 					SDL_Vertex v[4];

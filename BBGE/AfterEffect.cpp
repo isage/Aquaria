@@ -220,10 +220,10 @@ void AfterEffectManager::renderGrid(const RenderTransformStack &xf)
 			float v0 = (j)/(float)(yDivs-1)*percentY;
 			float v1 = (j+1)/(float)(yDivs-1)*percentY;
 
-			glm::vec4 p00 = xf.transformPoint(offx + vw*drawGrid[i][j].x,   offy + vh*drawGrid[i][j].y);
-			glm::vec4 p01 = xf.transformPoint(offx + vw*drawGrid[i][j+1].x, offy + vh*drawGrid[i][j+1].y);
-			glm::vec4 p11 = xf.transformPoint(offx + vw*drawGrid[i+1][j+1].x, offy + vh*drawGrid[i+1][j+1].y);
-			glm::vec4 p10 = xf.transformPoint(offx + vw*drawGrid[i+1][j].x, offy + vh*drawGrid[i+1][j].y);
+			glm::vec3 p00 = xf.transformPoint(offx + vw*drawGrid[i][j].x,   offy + vh*drawGrid[i][j].y);
+			glm::vec3 p01 = xf.transformPoint(offx + vw*drawGrid[i][j+1].x, offy + vh*drawGrid[i][j+1].y);
+			glm::vec3 p11 = xf.transformPoint(offx + vw*drawGrid[i+1][j+1].x, offy + vh*drawGrid[i+1][j+1].y);
+			glm::vec3 p10 = xf.transformPoint(offx + vw*drawGrid[i+1][j].x, offy + vh*drawGrid[i+1][j].y);
 
 			int base = (int)verts.size();
 			SDL_Vertex v;

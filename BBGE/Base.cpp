@@ -365,7 +365,7 @@ void drawCircle(float radius, int stepSize, float r, float g, float b, float a)
 	indices.clear();
 	SDL_FColor col = {r, g, b, a};
 
-	glm::vec4 center = core->transform.transformPoint(0, 0);
+	glm::vec3 center = core->transform.transformPoint(0, 0);
 	SDL_Vertex cv;
 	cv.color = col;
 	cv.position = {center.x, center.y};
@@ -374,7 +374,7 @@ void drawCircle(float radius, int stepSize, float r, float g, float b, float a)
 
 	for(int i=0;i < 360; i+=stepSize) {
 		const float degInRad = i*PI/180.0f;
-		glm::vec4 p = core->transform.transformPoint(cosf(degInRad)*radius, sinf(degInRad)*radius);
+		glm::vec3 p = core->transform.transformPoint(cosf(degInRad)*radius, sinf(degInRad)*radius);
 		SDL_Vertex v;
 		v.color = col;
 		v.position = {p.x, p.y};

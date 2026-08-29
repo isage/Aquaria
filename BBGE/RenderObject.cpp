@@ -249,7 +249,7 @@ Vector RenderObject::getInvRotPosition(const Vector &vec)
 		}
 	}
 
-	glm::vec4 result = xf.transformPoint(0, 0, 0);
+	glm::vec3 result = xf.transformPoint(0, 0, 0);
 
 	if (vec.x != 0 || vec.y != 0)
 	{
@@ -260,22 +260,35 @@ Vector RenderObject::getInvRotPosition(const Vector &vec)
 	return Vector(result.x, result.y, result.z);
 }
 
-static glm::mat4 matrixChain(const RenderObject *ro)
+static const float RENDEROBJECT_PI = 3.14159265358979323846f;
+
+// Step 4 of the performance optimization plan: converted from glm::mat4
+// to glm::mat3, matching RenderTransformStack's own migration (see
+// BBGE/RenderTransform.h). Standalone mat3 building blocks
+// (translate/rotate/scale as one-off matrices, not "apply to existing
+// stack" operations like RenderTransformStack's methods) since this
+// function doesn't go through that class - it builds and composes
+// glm::mat3 objects directly, matching the same column-major convention
+// and rotation direction verified there. Converting this specific
+// function (recursive, with a real parent-child chain, flip handling,
+// and multiple offset/scale stages) was verified with a dedicated
+// standalone test against the old mat4 version - both a real
+// parent-child chain and a flipped child at several rotation angles, not
+// just a single flat case - all cases matched to within floating-point
+// tolerance.
+static glm::mat3 matrixChain(const RenderObject *ro)
 {
-	glm::mat4 tranformMatrix = glm::scale(
-		glm::translate(
-			glm::rotate(
-				glm::translate(
-					ro->getParent() ? matrixChain(ro->getParent()) : glm::mat4(1.0f),
-					glm::vec3(ro->position.x+ro->offset.x, ro->position.y+ro->offset.y, 0)
-				),
-				ro->rotation.z + ro->rotationOffset.z,
-				glm::vec3(0, 0, 1)
-			),
-			glm::vec3(ro->beforeScaleOffset.x, ro->beforeScaleOffset.y, 0.0f)
-		),
-		glm::vec3(ro->scale.x, ro->scale.y, 0.0f)
-	);
+	glm::mat3 posOffsetTranslate(1,0,0, 0,1,0, ro->position.x+ro->offset.x, ro->position.y+ro->offset.y, 1);
+
+	float rotRad = (ro->rotation.z + ro->rotationOffset.z) * (RENDEROBJECT_PI / 180.0f);
+	float rotC = cosf(rotRad), rotS = sinf(rotRad);
+	glm::mat3 rotationMat(rotC, rotS, 0, -rotS, rotC, 0, 0, 0, 1);
+
+	glm::mat3 beforeScaleTranslate(1,0,0, 0,1,0, ro->beforeScaleOffset.x, ro->beforeScaleOffset.y, 1);
+	glm::mat3 scaleMat(ro->scale.x, 0, 0, 0, ro->scale.y, 0, 0, 0, 1);
+
+	glm::mat3 parentChain = ro->getParent() ? matrixChain(ro->getParent()) : glm::mat3(1.0f);
+	glm::mat3 tranformMatrix = parentChain * posOffsetTranslate * rotationMat * beforeScaleTranslate * scaleMat;
 
 	if (ro->isfh())
 	{
@@ -289,10 +302,12 @@ static glm::mat4 matrixChain(const RenderObject *ro)
 		// post-multiplies the flip after the chain's own Z-rotation is
 		// already baked in, matching "order B" in that verification.
 		// Step 4 of the performance optimization plan.
-		tranformMatrix *= glm::scale(glm::mat4(1.0f), glm::vec3(-1.0f, 1.0f, 1.0f));
+		glm::mat3 flipMat(-1,0,0, 0,1,0, 0,0,1);
+		tranformMatrix = tranformMatrix * flipMat;
 	}
 
-	tranformMatrix *= glm::translate(glm::vec3(ro->internalOffset.x, ro->internalOffset.y, 0.0f));
+	glm::mat3 internalOffsetTranslate(1,0,0, 0,1,0, ro->internalOffset.x, ro->internalOffset.y, 1);
+	tranformMatrix = tranformMatrix * internalOffsetTranslate;
 	return tranformMatrix;
 }
 
@@ -315,12 +330,16 @@ Vector RenderObject::getWorldPositionAndRotation()
 
 Vector RenderObject::getWorldCollidePosition(const Vector &vec)
 {
-	glm::mat4 transformMatrix = glm::translate(
-		matrixChain(this),
-		glm::vec3(collidePosition.x + vec.x, collidePosition.y + vec.y, 0.0f)
-	);
+	// Step 4 of the performance optimization plan: matrixChain() now
+	// returns glm::mat3, not glm::mat4 - the translation column moved
+	// from index [3] (mat4's 4th column) to index [2] (mat3's 3rd,
+	// last column). Verified together with matrixChain() itself via the
+	// same standalone test (a real parent-child chain, flip handling,
+	// multiple rotation angles) - see the comment there.
+	glm::mat3 collideTranslate(1,0,0, 0,1,0, collidePosition.x + vec.x, collidePosition.y + vec.y, 1);
+	glm::mat3 transformMatrix = matrixChain(this) * collideTranslate;
 
-	return Vector(transformMatrix[3][0], transformMatrix[3][1], 0);
+	return Vector(transformMatrix[2][0], transformMatrix[2][1], 0);
 }
 
 void RenderObject::fhTo(bool fh)
@@ -776,10 +795,10 @@ void RenderObject::renderCollision()
 		{
 			RectShape *r = &collisionRects[i];
 
-			glm::vec4 p0 = core->transform.transformPoint(r->x1, r->y1);
-			glm::vec4 p1 = core->transform.transformPoint(r->x1, r->y2);
-			glm::vec4 p2 = core->transform.transformPoint(r->x2, r->y2);
-			glm::vec4 p3 = core->transform.transformPoint(r->x2, r->y1);
+			glm::vec3 p0 = core->transform.transformPoint(r->x1, r->y1);
+			glm::vec3 p1 = core->transform.transformPoint(r->x1, r->y2);
+			glm::vec3 p2 = core->transform.transformPoint(r->x2, r->y2);
+			glm::vec3 p3 = core->transform.transformPoint(r->x2, r->y1);
 
 			SDL_FColor col = {1.0f, 0.5f, 1.0f, 0.5f};
 			SDL_Vertex v[4];

@@ -165,7 +165,7 @@ void Web::onRender()
 	pts.reserve(points.size());
 	for (int i = 0; i < points.size(); i++)
 	{
-		glm::vec4 wp = core->transform.transformPoint(points[i].x, points[i].y);
+		glm::vec3 wp = core->transform.transformPoint(points[i].x, points[i].y);
 		pts.push_back({wp.x, wp.y});
 	}
 	SDL_RenderLines(renderer, pts.data(), (int)pts.size());

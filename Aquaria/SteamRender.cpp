@@ -87,14 +87,14 @@ void SteamRender::onRender()
 							const float texScale = len/256.0f;
 
 							// GL_QUAD_STRIP (8 points -> 3 quads) -> triangle list.
-							glm::vec4 w1 = core->transform.transformPoint(r1.x, r1.y);
-							glm::vec4 w2p = core->transform.transformPoint(r2.x, r2.y);
-							glm::vec4 w3 = core->transform.transformPoint(r3.x, r3.y);
-							glm::vec4 w4 = core->transform.transformPoint(r4.x, r4.y);
-							glm::vec4 w5 = core->transform.transformPoint(r5.x, r5.y);
-							glm::vec4 w6 = core->transform.transformPoint(r6.x, r6.y);
-							glm::vec4 w7 = core->transform.transformPoint(r7.x, r7.y);
-							glm::vec4 w8 = core->transform.transformPoint(r8.x, r8.y);
+							glm::vec3 w1 = core->transform.transformPoint(r1.x, r1.y);
+							glm::vec3 w2p = core->transform.transformPoint(r2.x, r2.y);
+							glm::vec3 w3 = core->transform.transformPoint(r3.x, r3.y);
+							glm::vec3 w4 = core->transform.transformPoint(r4.x, r4.y);
+							glm::vec3 w5 = core->transform.transformPoint(r5.x, r5.y);
+							glm::vec3 w6 = core->transform.transformPoint(r6.x, r6.y);
+							glm::vec3 w7 = core->transform.transformPoint(r7.x, r7.y);
+							glm::vec3 w8 = core->transform.transformPoint(r8.x, r8.y);
 
 							SDL_FColor edgeCol = {1,1,1,0};
 							SDL_FColor midCol = {1,1,1,alpha.x};

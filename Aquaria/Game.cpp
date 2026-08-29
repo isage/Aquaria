@@ -2080,7 +2080,7 @@ void Game::fillGridFromQuad(Quad *q, ObsType obsType, bool trim)
 
 			xf.translate((obs[i].x-w2), (obs[i].y-h2), 0);
 
-			glm::vec4 origin = xf.transformPoint(0, 0, 0);
+			glm::vec3 origin = xf.transformPoint(0, 0, 0);
 			float x = origin.x;
 			float y = origin.y;
 

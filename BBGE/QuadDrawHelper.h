@@ -55,10 +55,10 @@ inline void drawTexturedQuad(SDL_Renderer *renderer, SDL_Texture *tex,
 {
 	if (!renderer) return;
 
-	glm::vec4 p0 = core->transform.transformPoint(cx-hw, cy+hh);
-	glm::vec4 p1 = core->transform.transformPoint(cx+hw, cy+hh);
-	glm::vec4 p2 = core->transform.transformPoint(cx+hw, cy-hh);
-	glm::vec4 p3 = core->transform.transformPoint(cx-hw, cy-hh);
+	glm::vec3 p0 = core->transform.transformPoint(cx-hw, cy+hh);
+	glm::vec3 p1 = core->transform.transformPoint(cx+hw, cy+hh);
+	glm::vec3 p2 = core->transform.transformPoint(cx+hw, cy-hh);
+	glm::vec3 p3 = core->transform.transformPoint(cx-hw, cy-hh);
 
 	SDL_FColor col = {r, g, b, a};
 	SDL_Vertex v[4];

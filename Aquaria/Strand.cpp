@@ -81,10 +81,10 @@ void Strand::onRender()
 	// only takes one flat color per call, so each segment below is drawn
 	// with its leading vertex's color instead of a true gradient - a close
 	// approximation for this thin strand visual, not pixel-identical.
-	glm::vec4 prevPt = core->transform.transformPoint(position.x, position.y);
+	glm::vec3 prevPt = core->transform.transformPoint(position.x, position.y);
 	Uint8 pr=r>>8, pg=g>>8, pb=b>>8, pa=a>>8;
 
-	glm::vec4 seg0 = core->transform.transformPoint(segments[0]->position.x, segments[0]->position.y);
+	glm::vec3 seg0 = core->transform.transformPoint(segments[0]->position.x, segments[0]->position.y);
 	SDL_SetRenderDrawColor(renderer, pr, pg, pb, pa);
 	SDL_RenderLine(renderer, prevPt.x, prevPt.y, seg0.x, seg0.y);
 	prevPt = seg0;
@@ -94,7 +94,7 @@ void Strand::onRender()
 	for (i = 1; i < colorLimit; i++)
 	{
 		r -= dr; g -= dg; b -= db; a -= da;
-		glm::vec4 pt = core->transform.transformPoint(segments[i]->position.x, segments[i]->position.y);
+		glm::vec3 pt = core->transform.transformPoint(segments[i]->position.x, segments[i]->position.y);
 		SDL_SetRenderDrawColor(renderer, r>>8, g>>8, b>>8, a>>8);
 		SDL_RenderLine(renderer, prevPt.x, prevPt.y, pt.x, pt.y);
 		prevPt = pt;
@@ -102,7 +102,7 @@ void Strand::onRender()
 	for (; i < numSegments; i++)
 	{
 		a -= da;
-		glm::vec4 pt = core->transform.transformPoint(segments[i]->position.x, segments[i]->position.y);
+		glm::vec3 pt = core->transform.transformPoint(segments[i]->position.x, segments[i]->position.y);
 		SDL_SetRenderDrawColor(renderer, 0, 0, 0, a>>8);
 		SDL_RenderLine(renderer, prevPt.x, prevPt.y, pt.x, pt.y);
 		prevPt = pt;

@@ -45,8 +45,8 @@ class TimelineRender : public RenderObject
 		SDL_SetRenderDrawColorFloat(renderer, 1, 1, 1, 1);
 		for (int x = 0; x < 800; x += TIMELINE_GRIDSIZE)
 		{
-			glm::vec4 p0 = core->transform.transformPoint(x, -5);
-			glm::vec4 p1 = core->transform.transformPoint(x, 5);
+			glm::vec3 p0 = core->transform.transformPoint(x, -5);
+			glm::vec3 p1 = core->transform.transformPoint(x, 5);
 			SDL_FPoint pts[2] = {{p0.x,p0.y},{p1.x,p1.y}};
 			SDL_RenderLines(renderer, pts, 2);
 		}

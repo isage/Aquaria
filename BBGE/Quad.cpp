@@ -431,10 +431,10 @@ void Quad::renderGrid()
 		{
 			if (drawGrid[i][j].z != 0 || drawGrid[i][j+1].z != 0 || drawGrid[i+1][j].z != 0 || drawGrid[i+1][j+1].z != 0)
 			{
-				glm::vec4 p00 = core->transform.transformPoint(w*drawGrid[i][j].x,     h*drawGrid[i][j].y);
-				glm::vec4 p01 = core->transform.transformPoint(w*drawGrid[i][j+1].x,   h*drawGrid[i][j+1].y);
-				glm::vec4 p11 = core->transform.transformPoint(w*drawGrid[i+1][j+1].x, h*drawGrid[i+1][j+1].y);
-				glm::vec4 p10 = core->transform.transformPoint(w*drawGrid[i+1][j].x,   h*drawGrid[i+1][j].y);
+				glm::vec3 p00 = core->transform.transformPoint(w*drawGrid[i][j].x,     h*drawGrid[i][j].y);
+				glm::vec3 p01 = core->transform.transformPoint(w*drawGrid[i][j+1].x,   h*drawGrid[i][j+1].y);
+				glm::vec3 p11 = core->transform.transformPoint(w*drawGrid[i+1][j+1].x, h*drawGrid[i+1][j+1].y);
+				glm::vec3 p10 = core->transform.transformPoint(w*drawGrid[i+1][j].x,   h*drawGrid[i+1][j].y);
 
 				int base = (int)verts.size();
 				SDL_Vertex v;
@@ -501,8 +501,8 @@ void Quad::onRender()
 
 			for (size_t i = 0; i < strip.size(); i++)
 			{
-				glm::vec4 top = core->transform.transformPoint(strip[i].x*width-_w2, strip[i].y*_h2*10 - _h2);
-				glm::vec4 bot = core->transform.transformPoint(strip[i].x*width-_w2, strip[i].y*_h2*10 + _h2);
+				glm::vec3 top = core->transform.transformPoint(strip[i].x*width-_w2, strip[i].y*_h2*10 - _h2);
+				glm::vec3 bot = core->transform.transformPoint(strip[i].x*width-_w2, strip[i].y*_h2*10 + _h2);
 
 				SDL_Vertex v;
 				v.color = col;
@@ -550,10 +550,10 @@ void Quad::onRender()
 				// transformed by the current world transform. This replaces
 				// what the implicit GL matrix stack used to do to each
 				// glVertex2f() call.
-				glm::vec4 wp0 = core->transform.transformPoint(-_w2, +_h2);
-				glm::vec4 wp1 = core->transform.transformPoint(+_w2, +_h2);
-				glm::vec4 wp2 = core->transform.transformPoint(+_w2, -_h2);
-				glm::vec4 wp3 = core->transform.transformPoint(-_w2, -_h2);
+				glm::vec3 wp0 = core->transform.transformPoint(-_w2, +_h2);
+				glm::vec3 wp1 = core->transform.transformPoint(+_w2, +_h2);
+				glm::vec3 wp2 = core->transform.transformPoint(+_w2, -_h2);
+				glm::vec3 wp3 = core->transform.transformPoint(-_w2, -_h2);
 
 				// wp0/wp1 are the BOTTOM screen vertices (+_h2, Y-down),
 				// wp2/wp3 are the TOP screen vertices (-_h2). With V=0 at
@@ -618,10 +618,10 @@ void Quad::onRender()
 				// equivalent (no fixed-size screen-space point primitive)
 			}
 
-			glm::vec4 c0 = core->transform.transformPoint(-_w2, +_h2);
-			glm::vec4 c1 = core->transform.transformPoint(+_w2, +_h2);
-			glm::vec4 c2 = core->transform.transformPoint(+_w2, -_h2);
-			glm::vec4 c3 = core->transform.transformPoint(-_w2, -_h2);
+			glm::vec3 c0 = core->transform.transformPoint(-_w2, +_h2);
+			glm::vec3 c1 = core->transform.transformPoint(+_w2, +_h2);
+			glm::vec3 c2 = core->transform.transformPoint(+_w2, -_h2);
+			glm::vec3 c3 = core->transform.transformPoint(-_w2, -_h2);
 
 			SDL_FPoint pts[5] = {
 				{c0.x, c0.y}, {c1.x, c1.y}, {c2.x, c2.y}, {c3.x, c3.y}, {c0.x, c0.y}

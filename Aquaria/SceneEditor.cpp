@@ -128,10 +128,10 @@ void WarpAreaRender::onRender()
 			drawCircle(a->radius, 1, r, g, b, av);
 		else
 		{
-			glm::vec4 p0 = core->transform.transformPoint(-a->w,-a->h);
-			glm::vec4 p1 = core->transform.transformPoint(-a->w, a->h);
-			glm::vec4 p2 = core->transform.transformPoint( a->w, a->h);
-			glm::vec4 p3 = core->transform.transformPoint( a->w,-a->h);
+			glm::vec3 p0 = core->transform.transformPoint(-a->w,-a->h);
+			glm::vec3 p1 = core->transform.transformPoint(-a->w, a->h);
+			glm::vec3 p2 = core->transform.transformPoint( a->w, a->h);
+			glm::vec3 p3 = core->transform.transformPoint( a->w,-a->h);
 
 			SDL_FColor col = {r, g, b, av};
 			SDL_Vertex v[4];

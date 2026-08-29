@@ -317,8 +317,8 @@ void AutoMap::onRender()
 				{
 					if (rowStart != -1)
 					{
-						glm::vec4 p0 = core->transform.transformPoint(rowStart-t.x, y-t.y);
-						glm::vec4 p1 = core->transform.transformPoint(x-t.x, y-t.y);
+						glm::vec3 p0 = core->transform.transformPoint(rowStart-t.x, y-t.y);
+						glm::vec3 p1 = core->transform.transformPoint(x-t.x, y-t.y);
 						SDL_FPoint pts[2] = {{p0.x,p0.y},{p1.x,p1.y}};
 						SDL_RenderLines(renderer, pts, 2);
 						rowStart = -1;
@@ -327,8 +327,8 @@ void AutoMap::onRender()
 			}
 			if (rowStart != -1)
 			{
-				glm::vec4 p0 = core->transform.transformPoint(rowStart-t.x, y-t.y);
-				glm::vec4 p1 = core->transform.transformPoint(x-t.x, y-t.y);
+				glm::vec3 p0 = core->transform.transformPoint(rowStart-t.x, y-t.y);
+				glm::vec3 p1 = core->transform.transformPoint(x-t.x, y-t.y);
 				SDL_FPoint pts[2] = {{p0.x,p0.y},{p1.x,p1.y}};
 				SDL_RenderLines(renderer, pts, 2);
 			}

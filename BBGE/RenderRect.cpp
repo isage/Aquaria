@@ -51,10 +51,10 @@ void OutlineRect::onRender()
 	// lines below always draw at 1px regardless of lineSize.
 	// Most call sites use the default lineSize=1 anyway.
 
-	glm::vec4 ul = core->transform.transformPoint(-w2,-h2);
-	glm::vec4 ll = core->transform.transformPoint(-w2, h2);
-	glm::vec4 ur = core->transform.transformPoint( w2,-h2);
-	glm::vec4 lr = core->transform.transformPoint( w2, h2);
+	glm::vec3 ul = core->transform.transformPoint(-w2,-h2);
+	glm::vec3 ll = core->transform.transformPoint(-w2, h2);
+	glm::vec3 ur = core->transform.transformPoint( w2,-h2);
+	glm::vec3 lr = core->transform.transformPoint( w2, h2);
 
 	RenderState::setRenderDrawBlendMode(renderer, SDL_BLENDMODE_BLEND);
 	SDL_SetRenderDrawColorFloat(renderer, effectiveColor.x, effectiveColor.y, effectiveColor.z, effectiveAlpha);
@@ -70,10 +70,10 @@ void OutlineRect::onRender()
 
 	if (renderCenter)
 	{
-		glm::vec4 midL = core->transform.transformPoint(-w2, 0);
-		glm::vec4 midR = core->transform.transformPoint( w2, 0);
-		glm::vec4 midU = core->transform.transformPoint(0, -h2);
-		glm::vec4 midD = core->transform.transformPoint(0,  h2);
+		glm::vec3 midL = core->transform.transformPoint(-w2, 0);
+		glm::vec3 midR = core->transform.transformPoint( w2, 0);
+		glm::vec3 midU = core->transform.transformPoint(0, -h2);
+		glm::vec3 midD = core->transform.transformPoint(0,  h2);
 
 		SDL_SetRenderDrawColorFloat(renderer, 0.9f, 0.9f, 1.0f, effectiveAlpha);
 		SDL_FPoint lrPts[2] = {{midL.x, midL.y}, {midR.x, midR.y}};

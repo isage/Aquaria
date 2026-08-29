@@ -142,10 +142,10 @@ public:
 			else
 				a = alpha;
 
-			glm::vec4 p0 = core->transform.transformPoint(x, y);
-			glm::vec4 p1 = core->transform.transformPoint(x + width, y);
-			glm::vec4 p2 = core->transform.transformPoint(x + width, y + height);
-			glm::vec4 p3 = core->transform.transformPoint(x, y + height);
+			glm::vec3 p0 = core->transform.transformPoint(x, y);
+			glm::vec3 p1 = core->transform.transformPoint(x + width, y);
+			glm::vec3 p2 = core->transform.transformPoint(x + width, y + height);
+			glm::vec3 p3 = core->transform.transformPoint(x, y + height);
 
 			SDL_FColor topCol = {top_color[0], top_color[1], top_color[2], a};
 			SDL_FColor btmCol = {bottom_color[0], bottom_color[1], bottom_color[2], a};

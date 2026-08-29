@@ -216,10 +216,10 @@ void CollisionShape::render()
 	break;
 	case AABB:
 	{
-		glm::vec4 p0 = core->transform.transformPoint(offsetPosition.x-xw, offsetPosition.y+yw);
-		glm::vec4 p1 = core->transform.transformPoint(offsetPosition.x+xw, offsetPosition.y+yw);
-		glm::vec4 p2 = core->transform.transformPoint(offsetPosition.x+xw, offsetPosition.y-yw);
-		glm::vec4 p3 = core->transform.transformPoint(offsetPosition.x-xw, offsetPosition.y-yw);
+		glm::vec3 p0 = core->transform.transformPoint(offsetPosition.x-xw, offsetPosition.y+yw);
+		glm::vec3 p1 = core->transform.transformPoint(offsetPosition.x+xw, offsetPosition.y+yw);
+		glm::vec3 p2 = core->transform.transformPoint(offsetPosition.x+xw, offsetPosition.y-yw);
+		glm::vec3 p3 = core->transform.transformPoint(offsetPosition.x-xw, offsetPosition.y-yw);
 
 		SDL_FColor white = {1,1,1,1};
 		SDL_Vertex v[4];

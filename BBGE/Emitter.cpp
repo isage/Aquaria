@@ -297,7 +297,7 @@ void Emitter::onRender()
 				Vector col = p->color * colorMult;
 				SDL_FColor sdlCol = {col.x, col.y, col.z, p->alpha.x * alphaMult};
 
-				glm::vec4 c0, c1, c2, c3;
+				glm::vec3 c0, c1, c2, c3;
 				if (p->rot.z != 0 || p->rot.isInterpolating())
 				{
 					core->transform.pushMatrix();
@@ -375,10 +375,10 @@ void Emitter::onRender()
 
 				SDL_FColor sdlCol = {p->color.x, p->color.y, p->color.z, p->alpha.x};
 
-				glm::vec4 c0 = core->transform.transformPoint(x-dx, y+dy);
-				glm::vec4 c1 = core->transform.transformPoint(x+dx, y+dy);
-				glm::vec4 c2 = core->transform.transformPoint(x+dx, y-dy);
-				glm::vec4 c3 = core->transform.transformPoint(x-dx, y-dy);
+				glm::vec3 c0 = core->transform.transformPoint(x-dx, y+dy);
+				glm::vec3 c1 = core->transform.transformPoint(x+dx, y+dy);
+				glm::vec3 c2 = core->transform.transformPoint(x+dx, y-dy);
+				glm::vec3 c3 = core->transform.transformPoint(x-dx, y-dy);
 
 				int base = (int)verts.size();
 				SDL_Vertex v;

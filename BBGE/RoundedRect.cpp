@@ -122,10 +122,10 @@ void RoundedRect::onRender()
 	// vertex order the old glBegin(GL_QUADS) block used) as 2 triangles.
 	auto pushQuad = [&](float x0, float y0, float x1, float y1, float x2, float y2, float x3, float y3)
 	{
-		glm::vec4 p0 = core->transform.transformPoint(x0, y0);
-		glm::vec4 p1 = core->transform.transformPoint(x1, y1);
-		glm::vec4 p2 = core->transform.transformPoint(x2, y2);
-		glm::vec4 p3 = core->transform.transformPoint(x3, y3);
+		glm::vec3 p0 = core->transform.transformPoint(x0, y0);
+		glm::vec3 p1 = core->transform.transformPoint(x1, y1);
+		glm::vec3 p2 = core->transform.transformPoint(x2, y2);
+		glm::vec3 p3 = core->transform.transformPoint(x3, y3);
 		int base = (int)verts.size();
 		SDL_Vertex v;
 		v.color = col;
@@ -271,10 +271,10 @@ void RoundButton::onRender()
 	SDL_Renderer *renderer = core->getRenderer();
 	if (!renderer) return;
 
-	glm::vec4 ul = core->transform.transformPoint(-w2, -h2);
-	glm::vec4 ur = core->transform.transformPoint( w2, -h2);
-	glm::vec4 lr = core->transform.transformPoint( w2,  h2);
-	glm::vec4 ll = core->transform.transformPoint(-w2,  h2);
+	glm::vec3 ul = core->transform.transformPoint(-w2, -h2);
+	glm::vec3 ur = core->transform.transformPoint( w2, -h2);
+	glm::vec3 lr = core->transform.transformPoint( w2,  h2);
+	glm::vec3 ll = core->transform.transformPoint(-w2,  h2);
 
 	RenderState::setRenderDrawBlendMode(renderer, SDL_BLENDMODE_BLEND);
 	SDL_SetRenderDrawColorFloat(renderer, effectiveColor.x, effectiveColor.y, effectiveColor.z, effectiveAlpha);

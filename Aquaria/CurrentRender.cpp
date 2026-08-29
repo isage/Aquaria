@@ -123,8 +123,8 @@ void CurrentRender::onRender()
 						SDL_Vertex verts[8];
 						for (int i = 0; i < 4; i++)
 						{
-							glm::vec4 wl = core->transform.transformPoint(pts[i*2].x, pts[i*2].y);
-							glm::vec4 wr = core->transform.transformPoint(pts[i*2+1].x, pts[i*2+1].y);
+							glm::vec3 wl = core->transform.transformPoint(pts[i*2].x, pts[i*2].y);
+							glm::vec3 wr = core->transform.transformPoint(pts[i*2+1].x, pts[i*2+1].y);
 							SDL_FColor col = {1,1,1,a[i]};
 							verts[i*2+0].position={wl.x,wl.y}; verts[i*2+0].tex_coord={u[i],0}; verts[i*2+0].color=col;
 							verts[i*2+1].position={wr.x,wr.y}; verts[i*2+1].tex_coord={u[i],1}; verts[i*2+1].color=col;

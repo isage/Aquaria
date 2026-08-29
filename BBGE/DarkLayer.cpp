@@ -138,10 +138,10 @@ void DarkLayer::render()
 		// whatever the current object's world transform happens to be.
 		RenderTransformStack xf;
 
-		glm::vec4 p0 = xf.transformPoint(offX-stretch, offY-stretch);
-		glm::vec4 p1 = xf.transformPoint(offX-stretch, height+offY+stretch);
-		glm::vec4 p2 = xf.transformPoint(width+offX+stretch, height+offY+stretch);
-		glm::vec4 p3 = xf.transformPoint(width+offX+stretch, offY-stretch);
+		glm::vec3 p0 = xf.transformPoint(offX-stretch, offY-stretch);
+		glm::vec3 p1 = xf.transformPoint(offX-stretch, height+offY+stretch);
+		glm::vec3 p2 = xf.transformPoint(width+offX+stretch, height+offY+stretch);
+		glm::vec3 p3 = xf.transformPoint(width+offX+stretch, offY-stretch);
 
 		SDL_FColor white = {1,1,1,1};
 		SDL_Vertex v[4];

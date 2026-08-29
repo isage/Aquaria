@@ -70,10 +70,10 @@ void Gradient::onRender()
 	// render-layer-multiplied color renderCall() had set beforehand.
 	// Preserved exactly rather than "corrected" to use the layer-aware
 	// value, since that would be a behavior change.
-	glm::vec4 p0 = core->transform.transformPoint(-0.5f,  0.5f);
-	glm::vec4 p1 = core->transform.transformPoint( 0.5f,  0.5f);
-	glm::vec4 p2 = core->transform.transformPoint( 0.5f, -0.5f);
-	glm::vec4 p3 = core->transform.transformPoint(-0.5f, -0.5f);
+	glm::vec3 p0 = core->transform.transformPoint(-0.5f,  0.5f);
+	glm::vec3 p1 = core->transform.transformPoint( 0.5f,  0.5f);
+	glm::vec3 p2 = core->transform.transformPoint( 0.5f, -0.5f);
+	glm::vec3 p3 = core->transform.transformPoint(-0.5f, -0.5f);
 
 	SDL_Vertex v[4];
 	v[0].position = {p0.x, p0.y}; v[0].tex_coord = {0,0};

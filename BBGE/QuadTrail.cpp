@@ -102,8 +102,8 @@ void QuadTrail::onRender()
 		dl = diff.getPerpendicularLeft();
 		dr = diff.getPerpendicularRight();
 
-		glm::vec4 wl = core->transform.transformPoint(p.x+dl.x, p.y+dl.y);
-		glm::vec4 wr = core->transform.transformPoint(p.x+dr.x, p.y+dr.y);
+		glm::vec3 wl = core->transform.transformPoint(p.x+dl.x, p.y+dl.y);
+		glm::vec3 wr = core->transform.transformPoint(p.x+dr.x, p.y+dr.y);
 
 		SDL_Vertex v;
 		v.color = {1, 1, 1, vAlpha};

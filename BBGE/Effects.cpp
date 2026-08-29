@@ -134,10 +134,10 @@ void PostProcessingFX::render()
 				{
 					SDL_FColor col = {radialBlurColor.x, radialBlurColor.y, radialBlurColor.z, alpha};
 
-					glm::vec4 p0 = xf.transformPoint(-width2, height2);
-					glm::vec4 p1 = xf.transformPoint( width2, height2);
-					glm::vec4 p2 = xf.transformPoint( width2, -height2);
-					glm::vec4 p3 = xf.transformPoint(-width2, -height2);
+					glm::vec3 p0 = xf.transformPoint(-width2, height2);
+					glm::vec3 p1 = xf.transformPoint( width2, height2);
+					glm::vec3 p2 = xf.transformPoint( width2, -height2);
+					glm::vec3 p3 = xf.transformPoint(-width2, -height2);
 
 					int base = (int)verts.size();
 					SDL_Vertex v;

@@ -50,10 +50,10 @@ static void doRenderGrid(std::vector<SDL_Vertex> &verts, std::vector<int> &indic
 	const int drawy1 = startCol*TILE_SIZE;
 	const int drawy2 = (endCol+1)*TILE_SIZE;
 
-	glm::vec4 p0 = core->transform.transformPoint(drawx1, drawy2);
-	glm::vec4 p1 = core->transform.transformPoint(drawx2, drawy2);
-	glm::vec4 p2 = core->transform.transformPoint(drawx2, drawy1);
-	glm::vec4 p3 = core->transform.transformPoint(drawx1, drawy1);
+	glm::vec3 p0 = core->transform.transformPoint(drawx1, drawy2);
+	glm::vec3 p1 = core->transform.transformPoint(drawx2, drawy2);
+	glm::vec3 p2 = core->transform.transformPoint(drawx2, drawy1);
+	glm::vec3 p3 = core->transform.transformPoint(drawx1, drawy1);
 
 	int base = (int)verts.size();
 	SDL_Vertex v;
@@ -198,8 +198,8 @@ void SongLineRender::onRender()
 		else
 			a = 1;
 
-		glm::vec4 p0 = core->transform.transformPoint(pts[i].pt.x, pts[i].pt.y);
-		glm::vec4 p1 = core->transform.transformPoint(pts[i+1].pt.x, pts[i+1].pt.y);
+		glm::vec3 p0 = core->transform.transformPoint(pts[i].pt.x, pts[i].pt.y);
+		glm::vec3 p1 = core->transform.transformPoint(pts[i+1].pt.x, pts[i+1].pt.y);
 
 		SDL_SetRenderDrawColorFloat(renderer, pts[i].color.x, pts[i].color.y, pts[i].color.z, a);
 		SDL_RenderLine(renderer, p0.x, p0.y, p1.x, p1.y);

@@ -111,10 +111,10 @@ void ScreenTransition::onRender()
 
 	SDL_Texture *tex = captureBuffer.getTexture();
 
-	glm::vec4 c0 = core->transform.transformPoint(-width2, +height2);
-	glm::vec4 c1 = core->transform.transformPoint(+width2, +height2);
-	glm::vec4 c2 = core->transform.transformPoint(+width2, -height2);
-	glm::vec4 c3 = core->transform.transformPoint(-width2, -height2);
+	glm::vec3 c0 = core->transform.transformPoint(-width2, +height2);
+	glm::vec3 c1 = core->transform.transformPoint(+width2, +height2);
+	glm::vec3 c2 = core->transform.transformPoint(+width2, -height2);
+	glm::vec3 c3 = core->transform.transformPoint(-width2, -height2);
 
 	SDL_FColor col = {1, 1, 1, alpha.x};
 

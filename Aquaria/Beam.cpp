@@ -153,10 +153,10 @@ void Beam::onRender()
 	if (!renderer) return;
 	SDL_Texture *tex = texture ? texture->sdlTexture : 0;
 
-	glm::vec4 p0 = core->transform.transformPoint(sideLeft.x, sideLeft.y);
-	glm::vec4 p1 = core->transform.transformPoint(sideLeft.x+diff.x, sideLeft.y+diff.y);
-	glm::vec4 p2 = core->transform.transformPoint(sideRight.x+diff.x, sideRight.y+diff.y);
-	glm::vec4 p3 = core->transform.transformPoint(sideRight.x, sideRight.y);
+	glm::vec3 p0 = core->transform.transformPoint(sideLeft.x, sideLeft.y);
+	glm::vec3 p1 = core->transform.transformPoint(sideLeft.x+diff.x, sideLeft.y+diff.y);
+	glm::vec3 p2 = core->transform.transformPoint(sideRight.x+diff.x, sideRight.y+diff.y);
+	glm::vec3 p3 = core->transform.transformPoint(sideRight.x, sideRight.y);
 
 	SDL_FColor col = {effectiveColor.x, effectiveColor.y, effectiveColor.z, effectiveAlpha};
 	SDL_Vertex v[4];

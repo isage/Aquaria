@@ -307,7 +307,7 @@ static void drawLine(TTFFont *ttfFont, const std::string &line, float x, float y
 
 	TTF_SetTextColorFloat(text, r, g, b, a);
 
-	glm::vec4 wp = core->transform.transformPoint(x, y);
+	glm::vec3 wp = core->transform.transformPoint(x, y);
 	TTF_DrawRendererText(text, wp.x, wp.y);
 
 	TTF_DestroyText(text);
