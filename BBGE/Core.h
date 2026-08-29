@@ -445,7 +445,7 @@ public:
 	bool createWindow(int width, int height, int bits, bool fullscreen, std::string windowTitle="");
 	//void setWindowTitle(const std::string &title); // func not yet written
 	void clearBuffers();	
-	void render(int startLayer=-1, int endLayer=-1, bool useFrameBufferIfAvail=true);
+	void render(int startLayer=-1, int endLayer=-1, bool useFrameBufferIfAvail=true, bool applySmartCaptureGating=false);
 	void showBuffer();
 	void quit();
 	bool isShuttingDown();
@@ -693,6 +693,20 @@ public:
 	const Vector &getClearColor() const { return clearColor; }
 	Vector getClearColor();
 	const std::string &getDebugLogPath() const { return debugLogPath; }
+
+	// Step 3 of the performance optimization plan: a generic, cross-layer
+	// signal for "something needs core->frameBuffer's per-frame capture
+	// this frame" that Aquaria-layer code (which Core/BBGE can't
+	// reference directly) can set. Specifically exists for
+	// WaterSurfaceRender's dependency on core->frameBuffer - see the
+	// detailed reasoning at the render() capturing-decision site in
+	// Core.cpp. Coarse and deliberately conservative: sync it to "does
+	// the current scene have a water-surface-render object AND is the
+	// user's frame-buffer-for-water setting on", not a precise per-frame
+	// visibility check - correctness (never missing a real need) matters
+	// far more here than precision, given this exact subsystem's history
+	// of regressions in this project.
+	bool auxiliaryCaptureNeeded;
 	int flipMouseButtons;
 	void initFrameBuffer();
 	FrameBuffer frameBuffer;

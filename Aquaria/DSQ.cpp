@@ -4158,6 +4158,17 @@ void DSQ::jiggleCursor()
 float skipSfxVol = 1.0;
 void DSQ::onUpdate(float dt)
 {
+	// Step 3 of the performance optimization plan: sync the cross-layer
+	// signal WaterSurfaceRender's dependency on core->frameBuffer needs,
+	// since Core/BBGE can't reference Aquaria-layer types directly (see
+	// the detailed reasoning at Core::auxiliaryCaptureNeeded's
+	// declaration and at the render() capturing-decision site). Coarse
+	// and deliberately conservative - true whenever the user's
+	// frame-buffer-for-water setting is on AND the current scene has a
+	// water-surface-render object, regardless of whether it's precisely
+	// on-screen this exact frame.
+	core->auxiliaryCaptureNeeded = useFrameBuffer && game && game->waterSurfaceRender;
+
 	/*
 	if (hintTimer > 0)
 	{

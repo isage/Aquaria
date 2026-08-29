@@ -401,6 +401,7 @@ Core::Core(const std::string &filesystem, const std::string& extraDataDir, int n
 	aspectY = 3;
 
 	virtualOffX = virtualOffY = 0;
+	auxiliaryCaptureNeeded = false;
 	vw2 = 0;
 	vh2 = 0;
 
@@ -1564,6 +1565,7 @@ void Core::main(float runTime)
 
 		// UPDATE
 		if (verbose) debugLog("post processing fx update");
+		PerfLog::beginUpdate();
 		postProcessingFx.update(dt);
 
 		if (verbose) debugLog("update eventQueue");
@@ -1583,6 +1585,7 @@ void Core::main(float runTime)
 
 		if (verbose) debugLog("onUpdate");
 		onUpdate(dt);
+		PerfLog::endUpdate();
 
 		if (nestedMains == 1)
 			clearGarbage();
@@ -1610,7 +1613,15 @@ void Core::main(float runTime)
 			PerfLog::beginFrame();
 
 			if (verbose) debugLog("render");
-			render();
+			// applySmartCaptureGating=true only here - this is
+			// specifically the normal, per-frame, outermost render()
+			// call. Every other call site in the codebase
+			// (ScreenTransition::capture(), DarkLayer's nested call,
+			// screenshot code) keeps the parameter at its default
+			// (false), completely unaffected by Step 3's gating - see
+			// the detailed reasoning at the capturing-decision site in
+			// Core::render() itself.
+			render(-1, -1, true, true);
 
 			if (verbose) debugLog("showBuffer");
 			showBuffer();
@@ -2135,7 +2146,7 @@ void Core::updateCullData()
 	screenCenter = cullCenter = cameraPos + Vector(400.0f*invGlobalScale,300.0f*invGlobalScale);
 }
 
-void Core::render(int startLayer, int endLayer, bool useFrameBufferIfAvail)
+void Core::render(int startLayer, int endLayer, bool useFrameBufferIfAvail, bool applySmartCaptureGating)
 {
 
 	BBGE_PROF(Core_render);
@@ -2179,12 +2190,66 @@ void Core::render(int startLayer, int endLayer, bool useFrameBufferIfAvail)
 	// draw directly into it instead of hijacking the target for our own
 	// frameBuffer - matching the original GL code's behavior of always
 	// drawing into whatever FBO happened to already be bound.
+	//
+	// Step 3 of the performance optimization plan, applied carefully
+	// given this exact subsystem's regression history in this project:
+	// `applySmartCaptureGating` defaults to false, meaning every
+	// existing call site (ScreenTransition::capture() explicitly calling
+	// core->render() itself to snapshot a specific moment, DarkLayer's
+	// nested call, screenshot code) is completely unaffected and keeps
+	// the exact behavior above - always capture whenever a fresh outer
+	// call happens. Only Core::main()'s own per-frame call opts in to
+	// the new gating below, and only for that one, specific call site:
+	// real diagnostic data from this project confirmed the unconditional
+	// capture happens every frame regardless of scene complexity
+	// (targetSwitches stayed pinned at exactly 2.0 whether a scene drew
+	// 8 objects or 360), which is genuine, measured, constant overhead
+	// with no benefit in the common case where none of the three
+	// consumers below actually need this frame's capture.
+	//
+	// The three real consumers, checked directly rather than assumed:
+	// - AfterEffectManager: only genuinely needs the capture when a real
+	//   distortion effect is running (effects.size() > 0) - its `active`
+	//   flag alone isn't a safe signal here, since it's also true purely
+	//   because frameBuffer exists, unrelated to whether an effect is
+	//   actually active this frame.
+	// - WaterSurfaceRender: signaled via the coarse, conservative
+	//   core->auxiliaryCaptureNeeded flag (synced every frame from
+	//   DSQ::onUpdate(), since Core/BBGE can't reference Aquaria-layer
+	//   types like Game/WaterSurfaceRender directly).
+	// - ScreenTransition: not checked here at all, deliberately -
+	//   ScreenTransition::capture() calls core->render() itself,
+	//   explicitly, with applySmartCaptureGating left at its default
+	//   (false), so it always gets the original, unconditional capture
+	//   behavior regardless of what's happening below.
+	bool smartGateSaysSkip = false;
+	if (applySmartCaptureGating)
+	{
+		bool afterEffectNeedsIt = afterEffectManager && !afterEffectManager->effects.empty();
+		smartGateSaysSkip = !afterEffectNeedsIt && !auxiliaryCaptureNeeded;
+	}
+
 	SDL_Renderer *renderCheckRenderer = core->getRenderer();
 	bool capturing = core->frameBuffer.isInited()
 		&& renderCheckRenderer
-		&& (SDL_GetRenderTarget(renderCheckRenderer) == NULL);
+		&& (SDL_GetRenderTarget(renderCheckRenderer) == NULL)
+		&& !smartGateSaysSkip;
 	if (capturing)
 		core->frameBuffer.startCapture();
+
+	// Diagnostic counters (throttled, same cadence as the rest of
+	// PerfLog) - only meaningful when applySmartCaptureGating is true,
+	// to directly confirm via the next test run how often this is
+	// actually skipping the capture, and that nothing looks wrong
+	// (e.g. a suspiciously high skip rate in a water-heavy area would be
+	// a red flag worth investigating before trusting this further).
+	if (applySmartCaptureGating)
+	{
+		if (smartGateSaysSkip)
+			PerfLog::countCaptureSkipped();
+		else
+			PerfLog::countCaptureEngaged();
+	}
 
 	core->loadBaseTransform();
 	clearBuffers();

@@ -52,6 +52,16 @@ namespace PerfLog
 	void beginFrame();
 	void endFrame();
 
+	// Separate timing for the per-frame game-update phase (particle
+	// manager, sound, ActionMapper/StateManager via Core::onUpdate(),
+	// etc.) - wraps a *different* span than beginFrame()/endFrame(),
+	// letting a frame's cost be split into "update" vs "render" instead
+	// of only knowing the combined total. Call beginUpdate() at the
+	// start of the update phase and endUpdate() right after
+	// Core::onUpdate() returns, both already wired into Core::main().
+	void beginUpdate();
+	void endUpdate();
+
 	// Counters - bump these from the actual call sites that do the real
 	// work they represent. All are per-frame; reset automatically by
 	// beginFrame().
@@ -59,6 +69,16 @@ namespace PerfLog
 	void countStateChangeSkipped();     // a blend/scale-mode change that was correctly skipped (Step 1)
 	void countStateChangeApplied();     // a blend/scale-mode change that actually went to SDL
 	void countRenderTargetSwitch();     // an SDL_SetRenderTarget() call (Step 3's main concern)
+
+	// Step 3-specific: how often the smart capture-gating decided to
+	// skip vs engage core->frameBuffer's per-frame capture, when that
+	// gating is active (Core::main()'s normal per-frame render() call
+	// only - see the detailed reasoning at that call site). Lets a test
+	// run directly confirm the gating is actually skipping captures in
+	// scenes that don't need them, and isn't skipping suspiciously often
+	// somewhere it shouldn't (e.g. a water-heavy area).
+	void countCaptureSkipped();
+	void countCaptureEngaged();
 
 	// Enable/disable at runtime (defaults to on) - useful for isolating
 	// a specific test run without a rebuild.
