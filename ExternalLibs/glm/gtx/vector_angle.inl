@@ -1,58 +1,45 @@
-///////////////////////////////////////////////////////////////////////////////////////////////////
-// OpenGL Mathematics Copyright (c) 2005 - 2011 G-Truc Creation (www.g-truc.net)
-///////////////////////////////////////////////////////////////////////////////////////////////////
-// Created : 2005-12-30
-// Updated : 2008-09-29
-// Licence : This source is under MIT License
-// File    : glm/gtx/vector_angle.inl
-///////////////////////////////////////////////////////////////////////////////////////////////////
+/// @ref gtx_vector_angle
 
-namespace glm{
-namespace gtx{
-namespace vector_angle{
-
-template <typename genType> 
-GLM_FUNC_QUALIFIER typename genType::value_type angle
-(
-	genType const & x, 
-	genType const & y
-)
+namespace glm
 {
-	return degrees(acos(dot(x, y)));
-}
+	template<typename genType>
+	GLM_FUNC_QUALIFIER genType angle
+	(
+		genType const& x,
+		genType const& y
+	)
+	{
+		GLM_STATIC_ASSERT(std::numeric_limits<genType>::is_iec559, "'angle' only accept floating-point inputs");
+		return acos(clamp(dot(x, y), genType(-1), genType(1)));
+	}
 
-//! \todo epsilon is hard coded to 0.01
-template <typename valType> 
-GLM_FUNC_QUALIFIER valType orientedAngle
-(
-	detail::tvec2<valType> const & x, 
-	detail::tvec2<valType> const & y
-)
-{
-    valType Angle = glm::degrees(acos(dot(x, y)));
-	detail::tvec2<valType> TransformedVector = glm::gtx::rotate_vector::rotate(x, Angle);
-    if(all(equalEpsilon(y, TransformedVector, valType(0.01))))
-		return Angle;
-    else
-        return -Angle;
-}
+	template<length_t L, typename T, qualifier Q>
+	GLM_FUNC_QUALIFIER T angle(vec<L, T, Q> const& x, vec<L, T, Q> const& y)
+	{
+		GLM_STATIC_ASSERT(std::numeric_limits<T>::is_iec559 || GLM_CONFIG_UNRESTRICTED_FLOAT, "'angle' only accept floating-point inputs");
+		return acos(clamp(dot(x, y), T(-1), T(1)));
+	}
 
-template <typename valType>
-GLM_FUNC_QUALIFIER valType orientedAngle
-(
-	detail::tvec3<valType> const & x,
-	detail::tvec3<valType> const & y,
-	detail::tvec3<valType> const & ref
-)
-{
-	valType Angle = glm::degrees(glm::acos(glm::dot(x, y)));
+	template<typename T, qualifier Q>
+	GLM_FUNC_QUALIFIER T orientedAngle(vec<2, T, Q> const& x, vec<2, T, Q> const& y)
+	{
+		GLM_STATIC_ASSERT(std::numeric_limits<T>::is_iec559 || GLM_CONFIG_UNRESTRICTED_FLOAT, "'orientedAngle' only accept floating-point inputs");
+		T const Angle(acos(clamp(dot(x, y), T(-1), T(1))));
 
-	if(glm::dot(ref, glm::cross(x, y)) < valType(0))
-		return -Angle;
-	else
-		return Angle;
-}
+		T const partialCross = x.x * y.y - y.x * x.y;
 
-}//namespace vector_angle
-}//namespace gtx
+		if (partialCross > T(0))
+			return Angle;
+		else
+			return -Angle;
+	}
+
+	template<typename T, qualifier Q>
+	GLM_FUNC_QUALIFIER T orientedAngle(vec<3, T, Q> const& x, vec<3, T, Q> const& y, vec<3, T, Q> const& ref)
+	{
+		GLM_STATIC_ASSERT(std::numeric_limits<T>::is_iec559 || GLM_CONFIG_UNRESTRICTED_FLOAT, "'orientedAngle' only accept floating-point inputs");
+
+		T const Angle(acos(clamp(dot(x, y), T(-1), T(1))));
+		return mix(Angle, -Angle, dot(ref, cross(x, y)) < T(0));
+	}
 }//namespace glm

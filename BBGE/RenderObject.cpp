@@ -28,7 +28,14 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include <algorithm>
 
 #include "glm/glm.hpp"
-#include "glm/gtx/transform.hpp"
+// Step 5 of the performance optimization plan: glm/gtx/transform.hpp
+// (glm::rotate()/translate()/scale()) removed - confirmed via a
+// codebase-wide sweep that nothing calls these anymore, since Step 4's
+// mat3 migration hand-rolled every transform matrix directly instead.
+// Modern GLM gates this header behind GLM_ENABLE_EXPERIMENTAL (it's
+// classified as an experimental extension); since nothing here actually
+// needs it, removing the include is cleaner than opting into an
+// experimental API for zero benefit.
 
 bool	RenderObject::renderCollisionShape			= false;
 SDL_Texture*	RenderObject::lastTextureApplied			= 0;

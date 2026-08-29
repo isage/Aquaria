@@ -1,114 +1,121 @@
-///////////////////////////////////////////////////////////////////////////////////////////////////
-// OpenGL Mathematics Copyright (c) 2005 - 2011 G-Truc Creation (www.g-truc.net)
-///////////////////////////////////////////////////////////////////////////////////////////////////
-// Created : 2006-11-02
-// Updated : 2009-02-19
-// Licence : This source is under MIT License
-// File    : glm/gtx/rotate_vector.hpp
-///////////////////////////////////////////////////////////////////////////////////////////////////
-// Dependency:
-// - GLM core
-///////////////////////////////////////////////////////////////////////////////////////////////////
+/// @ref gtx_rotate_vector
+/// @file glm/gtx/rotate_vector.hpp
+///
+/// @see core (dependence)
+/// @see gtx_transform (dependence)
+///
+/// @defgroup gtx_rotate_vector GLM_GTX_rotate_vector
+/// @ingroup gtx
+///
+/// Include <glm/gtx/rotate_vector.hpp> to use the features of this extension.
+///
+/// Function to directly rotate a vector
 
-#ifndef glm_gtx_rotate_vector
-#define glm_gtx_rotate_vector
+#pragma once
 
 // Dependency:
-#include "../glm.hpp"
 #include "../gtx/transform.hpp"
+#include "../gtc/epsilon.hpp"
+#include "../ext/vector_relational.hpp"
+#include "../glm.hpp"
 
-#if(defined(GLM_MESSAGES) && !defined(glm_ext))
+#ifndef GLM_ENABLE_EXPERIMENTAL
+#	error "GLM: GLM_GTX_rotate_vector is an experimental extension and may change in the future. Use #define GLM_ENABLE_EXPERIMENTAL before including it, if you really want to use it."
+#elif GLM_MESSAGES == GLM_ENABLE && !defined(GLM_EXT_INCLUDED)
 #	pragma message("GLM: GLM_GTX_rotate_vector extension included")
 #endif
 
-namespace glm{
-namespace gtx{
-namespace rotate_vector ///< GLM_GTX_rotate_vector extension: Function to directly rotate a vector
+namespace glm
 {
-	using namespace transform;
-
-	/// \addtogroup gtx_rotate_vector
+	/// @addtogroup gtx_rotate_vector
 	/// @{
+
+	/// Returns Spherical interpolation between two vectors
+	///
+	/// @param x A first vector
+	/// @param y A second vector
+	/// @param a Interpolation factor. The interpolation is defined beyond the range [0, 1].
+	///
+	/// @see gtx_rotate_vector
+	template<typename T, qualifier Q>
+	GLM_FUNC_DECL vec<3, T, Q> slerp(
+		vec<3, T, Q> const& x,
+		vec<3, T, Q> const& y,
+		T const& a);
 
 	//! Rotate a two dimensional vector.
 	//! From GLM_GTX_rotate_vector extension.
-	template <typename T> 
-	detail::tvec2<T> rotate(
-        detail::tvec2<T> const & v, 
-		T const & angle);
-		
+	template<typename T, qualifier Q>
+	GLM_FUNC_DECL vec<2, T, Q> rotate(
+		vec<2, T, Q> const& v,
+		T const& angle);
+
 	//! Rotate a three dimensional vector around an axis.
 	//! From GLM_GTX_rotate_vector extension.
-	template <typename T> 
-	detail::tvec3<T> rotate(
-        detail::tvec3<T> const & v, 
-		T const & angle, 
-        detail::tvec3<T> const & normal);
-		
+	template<typename T, qualifier Q>
+	GLM_FUNC_DECL vec<3, T, Q> rotate(
+		vec<3, T, Q> const& v,
+		T const& angle,
+		vec<3, T, Q> const& normal);
+
 	//! Rotate a four dimensional vector around an axis.
 	//! From GLM_GTX_rotate_vector extension.
-	template <typename T> 
-	detail::tvec4<T> rotate(
-        detail::tvec4<T> const & v, 
-        T const & angle, 
-		detail::tvec3<T> const & normal);
-		
+	template<typename T, qualifier Q>
+	GLM_FUNC_DECL vec<4, T, Q> rotate(
+		vec<4, T, Q> const& v,
+		T const& angle,
+		vec<3, T, Q> const& normal);
+
 	//! Rotate a three dimensional vector around the X axis.
 	//! From GLM_GTX_rotate_vector extension.
-	template <typename T> 
-	detail::tvec3<T> rotateX(
-        detail::tvec3<T> const & v, 
-		T const & angle);
+	template<typename T, qualifier Q>
+	GLM_FUNC_DECL vec<3, T, Q> rotateX(
+		vec<3, T, Q> const& v,
+		T const& angle);
 
 	//! Rotate a three dimensional vector around the Y axis.
 	//! From GLM_GTX_rotate_vector extension.
-	template <typename T> 
-	detail::tvec3<T> rotateY(
-		detail::tvec3<T> const & v, 
-		T const & angle);
-		
+	template<typename T, qualifier Q>
+	GLM_FUNC_DECL vec<3, T, Q> rotateY(
+		vec<3, T, Q> const& v,
+		T const& angle);
+
 	//! Rotate a three dimensional vector around the Z axis.
 	//! From GLM_GTX_rotate_vector extension.
-	template <typename T> 
-	detail::tvec3<T> rotateZ(
-        detail::tvec3<T> const & v, 
-		T const & angle);
-		
-	//! Rotate a four dimentionnals vector around the X axis.
-	//! From GLM_GTX_rotate_vector extension.
-	template <typename T> 
-	detail::tvec4<T> rotateX(
-        detail::tvec4<T> const & v, 
-		T const & angle);
-		
+	template<typename T, qualifier Q>
+	GLM_FUNC_DECL vec<3, T, Q> rotateZ(
+		vec<3, T, Q> const& v,
+		T const& angle);
+
 	//! Rotate a four dimensional vector around the X axis.
 	//! From GLM_GTX_rotate_vector extension.
-	template <typename T> 
-	detail::tvec4<T> rotateY(
-        detail::tvec4<T> const & v, 
-		T const & angle);
-		
-	//! Rotate a four dimensional vector around the X axis. 
+	template<typename T, qualifier Q>
+	GLM_FUNC_DECL vec<4, T, Q> rotateX(
+		vec<4, T, Q> const& v,
+		T const& angle);
+
+	//! Rotate a four dimensional vector around the Y axis.
 	//! From GLM_GTX_rotate_vector extension.
-	template <typename T> 
-	detail::tvec4<T> rotateZ(
-        detail::tvec4<T> const & v, 
-		T const & angle);
-		
+	template<typename T, qualifier Q>
+	GLM_FUNC_DECL vec<4, T, Q> rotateY(
+		vec<4, T, Q> const& v,
+		T const& angle);
+
+	//! Rotate a four dimensional vector around the Z axis.
+	//! From GLM_GTX_rotate_vector extension.
+	template<typename T, qualifier Q>
+	GLM_FUNC_DECL vec<4, T, Q> rotateZ(
+		vec<4, T, Q> const& v,
+		T const& angle);
+
 	//! Build a rotation matrix from a normal and a up vector.
 	//! From GLM_GTX_rotate_vector extension.
-	template <typename T> 
-	detail::tmat4x4<T> orientation(
-        detail::tvec3<T> const & Normal, 
-        detail::tvec3<T> const & Up);
+	template<typename T, qualifier Q>
+	GLM_FUNC_DECL mat<4, 4, T, Q> orientation(
+		vec<3, T, Q> const& Normal,
+		vec<3, T, Q> const& Up);
 
 	/// @}
-}//namespace rotate_vector
-}//namespace gtx
 }//namespace glm
 
 #include "rotate_vector.inl"
-
-namespace glm{using namespace gtx::rotate_vector;}
-
-#endif//glm_gtx_rotate_vector

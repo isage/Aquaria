@@ -1,52 +1,47 @@
-///////////////////////////////////////////////////////////////////////////////////////////////////
-// OpenGL Mathematics Copyright (c) 2005 - 2011 G-Truc Creation (www.g-truc.net)
-///////////////////////////////////////////////////////////////////////////////////////////////////
-// Created : 2005-12-21
-// Updated : 2006-11-13
-// Licence : This source is under MIT License
-// File    : glm/gtx/orthonormalize.hpp
-///////////////////////////////////////////////////////////////////////////////////////////////////
+/// @ref gtx_orthonormalize
+/// @file glm/gtx/orthonormalize.hpp
+///
+/// @see core (dependence)
+/// @see gtx_extented_min_max (dependence)
+///
+/// @defgroup gtx_orthonormalize GLM_GTX_orthonormalize
+/// @ingroup gtx
+///
+/// Include <glm/gtx/orthonormalize.hpp> to use the features of this extension.
+///
+/// Orthonormalize matrices.
+
+#pragma once
+
 // Dependency:
-// - GLM core
-///////////////////////////////////////////////////////////////////////////////////////////////////
+#include "../vec3.hpp"
+#include "../mat3x3.hpp"
+#include "../geometric.hpp"
 
-#ifndef glm_gtx_orthonormalize
-#define glm_gtx_orthonormalize
-
-// Dependency:
-#include "../glm.hpp"
-
-#if(defined(GLM_MESSAGES) && !defined(glm_ext))
+#ifndef GLM_ENABLE_EXPERIMENTAL
+#	error "GLM: GLM_GTX_orthonormalize is an experimental extension and may change in the future. Use #define GLM_ENABLE_EXPERIMENTAL before including it, if you really want to use it."
+#elif GLM_MESSAGES == GLM_ENABLE && !defined(GLM_EXT_INCLUDED)
 #	pragma message("GLM: GLM_GTX_orthonormalize extension included")
 #endif
 
-namespace glm{
-namespace gtx{
-namespace orthonormalize ///< GLM_GTX_orthonormalize extension: Orthonormalize matrices.
+namespace glm
 {
-	/// \addtogroup gtx_orthonormalize
+	/// @addtogroup gtx_orthonormalize
 	/// @{
 
-	//! Returns the orthonormalized matrix of m.
-	//! From GLM_GTX_orthonormalize extension.
-	template <typename T> 
-	detail::tmat3x3<T> orthonormalize(
-		const detail::tmat3x3<T>& m);
-		
-    //! Orthonormalizes x according y.
-	//! From GLM_GTX_orthonormalize extension.
-	template <typename T> 
-	detail::tvec3<T> orthonormalize(
-		const detail::tvec3<T>& x, 
-		const detail::tvec3<T>& y);
+	/// Returns the orthonormalized matrix of m.
+	///
+	/// @see gtx_orthonormalize
+	template<typename T, qualifier Q>
+	GLM_FUNC_DECL mat<3, 3, T, Q> orthonormalize(mat<3, 3, T, Q> const& m);
+
+	/// Orthonormalizes x according y.
+	///
+	/// @see gtx_orthonormalize
+	template<typename T, qualifier Q>
+	GLM_FUNC_DECL vec<3, T, Q> orthonormalize(vec<3, T, Q> const& x, vec<3, T, Q> const& y);
 
 	/// @}
-}//namespace orthonormalize
-}//namespace gtx
 }//namespace glm
 
 #include "orthonormalize.inl"
-
-namespace glm{using namespace gtx::orthonormalize;}
-
-#endif//glm_gtx_orthonormalize

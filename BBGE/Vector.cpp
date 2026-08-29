@@ -23,7 +23,10 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "Base.h"
 #include <float.h>
 #include <glm/glm.hpp>
-#include <glm/gtc/matrix_transform.hpp>
+// Step 5 of the performance optimization plan: gtc/matrix_transform.hpp
+// removed - unused since getRotatedVector() below now hand-rolls its
+// mat3 directly (Step 4), and a codebase-wide sweep confirmed nothing
+// else here calls glm::translate()/rotate()/scale() either.
 
 /*************************************************************************/
 

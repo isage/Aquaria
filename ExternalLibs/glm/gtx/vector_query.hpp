@@ -1,95 +1,64 @@
- ///////////////////////////////////////////////////////////////////////////////////////////////////
-// OpenGL Mathematics Copyright (c) 2005 - 2011 G-Truc Creation (www.g-truc.net)
-///////////////////////////////////////////////////////////////////////////////////////////////////
-// Created : 2007-03-05
-// Updated : 2007-03-05
-// Licence : This source is under MIT License
-// File    : glm/gtx/vector_query.hpp
-///////////////////////////////////////////////////////////////////////////////////////////////////
-// Dependency:
-// - GLM core
-///////////////////////////////////////////////////////////////////////////////////////////////////
+/// @ref gtx_vector_query
+/// @file glm/gtx/vector_query.hpp
+///
+/// @see core (dependence)
+///
+/// @defgroup gtx_vector_query GLM_GTX_vector_query
+/// @ingroup gtx
+///
+/// Include <glm/gtx/vector_query.hpp> to use the features of this extension.
+///
+/// Query information of vector types
 
-#ifndef glm_gtx_vector_query
-#define glm_gtx_vector_query
+#pragma once
 
 // Dependency:
 #include "../glm.hpp"
 #include <cfloat>
 #include <limits>
 
-#if(defined(GLM_MESSAGES) && !defined(glm_ext))
+#ifndef GLM_ENABLE_EXPERIMENTAL
+#	error "GLM: GLM_GTX_vector_query is an experimental extension and may change in the future. Use #define GLM_ENABLE_EXPERIMENTAL before including it, if you really want to use it."
+#elif GLM_MESSAGES == GLM_ENABLE && !defined(GLM_EXT_INCLUDED)
 #	pragma message("GLM: GLM_GTX_vector_query extension included")
 #endif
 
-namespace glm{
-namespace gtx{
-namespace vector_query ///< GLM_GTX_vector_query extension: Query informations of vector types
+namespace glm
 {
-	/// \addtogroup gtx_vector_query
+	/// @addtogroup gtx_vector_query
 	/// @{
 
-	//! Check if two vectors are collinears.
-	//! From GLM_GTX_vector_query extensions.
-	template <typename genType> 
-	bool areCollinear(
-		genType const & v0, 
-		genType const & v1, 
-		typename genType::value_type const & epsilon = std::numeric_limits<typename genType::value_type>::epsilon());
-		
-    //! Check if two vectors are opposites.
-	//! From GLM_GTX_vector_query extensions.
-	template <typename genType> 
-	bool areOpposite(
-		genType const & v0, 
-		genType const & v1, 
-		typename genType::value_type const & epsilon = std::numeric_limits<typename genType::value_type>::epsilon());
-		
-    //! Check if two vectors are orthogonals.
-	//! From GLM_GTX_vector_query extensions.
-	template <typename genType> 
-	bool areOrthogonal(
-		genType const & v0, 
-		genType const & v1, 
-		typename genType::value_type const & epsilon = std::numeric_limits<typename genType::value_type>::epsilon());
+	//! Check whether two vectors are collinears.
+	/// @see gtx_vector_query extensions.
+	template<length_t L, typename T, qualifier Q>
+	GLM_FUNC_DECL bool areCollinear(vec<L, T, Q> const& v0, vec<L, T, Q> const& v1, T const& epsilon);
 
-	//! Check if a vector is normalized.
-	//! From GLM_GTX_vector_query extensions.
-	template <typename genType> 
-	bool isNormalized(
-		genType const & v, 
-		typename genType::value_type const & epsilon = std::numeric_limits<typename genType::value_type>::epsilon());
-		
-	//! Check if a vector is null.
-	//! From GLM_GTX_vector_query extensions.
-	template <typename genType> 
-	bool isNull(
-		genType const & v, 
-		typename genType::value_type const & epsilon = std::numeric_limits<typename genType::value_type>::epsilon());
+	//! Check whether two vectors are orthogonals.
+	/// @see gtx_vector_query extensions.
+	template<length_t L, typename T, qualifier Q>
+	GLM_FUNC_DECL bool areOrthogonal(vec<L, T, Q> const& v0, vec<L, T, Q> const& v1, T const& epsilon);
 
-	//! Check if two vectors are orthonormal.
-	//! From GLM_GTX_vector_query extensions.
-	template <typename genType>
-	bool areOrthonormal(
-		genType const & v0, 
-		genType const & v1, 
-		typename genType::value_type const & epsilon = std::numeric_limits<typename genType::value_type>::epsilon());
+	//! Check whether a vector is normalized.
+	/// @see gtx_vector_query extensions.
+	template<length_t L, typename T, qualifier Q>
+	GLM_FUNC_DECL bool isNormalized(vec<L, T, Q> const& v, T const& epsilon);
 
-	//! Check if two vectors are similar.
-	//! From GLM_GTX_vector_query extensions.
-	template <typename genType> 
-	bool areSimilar(
-		genType const & v0, 
-		genType const & v1, 
-		typename genType::value_type const & epsilon = std::numeric_limits<typename genType::value_type>::epsilon());
+	//! Check whether a vector is null.
+	/// @see gtx_vector_query extensions.
+	template<length_t L, typename T, qualifier Q>
+	GLM_FUNC_DECL bool isNull(vec<L, T, Q> const& v, T const& epsilon);
+
+	//! Check whether a each component of a vector is null.
+	/// @see gtx_vector_query extensions.
+	template<length_t L, typename T, qualifier Q>
+	GLM_FUNC_DECL vec<L, bool, Q> isCompNull(vec<L, T, Q> const& v, T const& epsilon);
+
+	//! Check whether two vectors are orthonormal.
+	/// @see gtx_vector_query extensions.
+	template<length_t L, typename T, qualifier Q>
+	GLM_FUNC_DECL bool areOrthonormal(vec<L, T, Q> const& v0, vec<L, T, Q> const& v1, T const& epsilon);
 
 	/// @}
-}// namespace vector_query
-}// namespace gtx
 }// namespace glm
 
 #include "vector_query.inl"
-
-namespace glm{using namespace gtx::vector_query;}
-
-#endif//glm_gtx_vector_query

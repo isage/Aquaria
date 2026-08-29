@@ -1,47 +1,47 @@
-///////////////////////////////////////////////////////////////////////////////////////////////////
-// OpenGL Mathematics Copyright (c) 2005 - 2011 G-Truc Creation (www.g-truc.net)
-///////////////////////////////////////////////////////////////////////////////////////////////////
-// Created : 2005-12-30
-// Updated : 2008-10-05
-// Licence : This source is under MIT License
-// File    : glm/gtx/closest_point.hpp
-///////////////////////////////////////////////////////////////////////////////////////////////////
-// Dependency:
-// - GLM core
-///////////////////////////////////////////////////////////////////////////////////////////////////
+/// @ref gtx_closest_point
+/// @file glm/gtx/closest_point.hpp
+///
+/// @see core (dependence)
+///
+/// @defgroup gtx_closest_point GLM_GTX_closest_point
+/// @ingroup gtx
+///
+/// Include <glm/gtx/closest_point.hpp> to use the features of this extension.
+///
+/// Find the point on a straight line which is the closet of a point.
 
-#ifndef glm_gtx_closest_point
-#define glm_gtx_closest_point
+#pragma once
 
 // Dependency:
 #include "../glm.hpp"
 
-#if(defined(GLM_MESSAGES) && !defined(glm_ext))
+#ifndef GLM_ENABLE_EXPERIMENTAL
+#	error "GLM: GLM_GTX_closest_point is an experimental extension and may change in the future. Use #define GLM_ENABLE_EXPERIMENTAL before including it, if you really want to use it."
+#elif GLM_MESSAGES == GLM_ENABLE && !defined(GLM_EXT_INCLUDED)
 #	pragma message("GLM: GLM_GTX_closest_point extension included")
 #endif
 
-namespace glm{
-namespace gtx{
-namespace closest_point ///< GLM_GTX_closest_point extension: Find the point on a straight line which is the closet of a point.
+namespace glm
 {
-	/// \addtogroup gtx_closest_point
+	/// @addtogroup gtx_closest_point
 	/// @{
 
-	/// Find the point on a straight line which is the closet of a point. 
-	/// From GLM_GTX_closest_point extension.
-	template <typename T> 
-	detail::tvec3<T> closestPointOnLine(
-		detail::tvec3<T> const & point, 
-		detail::tvec3<T> const & a, 
-		detail::tvec3<T> const & b);
+	/// Find the point on a straight line which is the closet of a point.
+	/// @see gtx_closest_point
+	template<typename T, qualifier Q>
+	GLM_FUNC_DECL vec<3, T, Q> closestPointOnLine(
+		vec<3, T, Q> const& point,
+		vec<3, T, Q> const& a,
+		vec<3, T, Q> const& b);
+
+	/// 2d lines work as well
+	template<typename T, qualifier Q>
+	GLM_FUNC_DECL vec<2, T, Q> closestPointOnLine(
+		vec<2, T, Q> const& point,
+		vec<2, T, Q> const& a,
+		vec<2, T, Q> const& b);
 
 	/// @}
-}// namespace closest_point
-}// namespace gtx
 }// namespace glm
 
 #include "closest_point.inl"
-
-namespace glm{using namespace gtx::closest_point;}
-
-#endif//glm_gtx_closest_point

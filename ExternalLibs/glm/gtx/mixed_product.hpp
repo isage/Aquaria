@@ -1,46 +1,39 @@
-///////////////////////////////////////////////////////////////////////////////////////////////////
-// OpenGL Mathematics Copyright (c) 2005 - 2011 G-Truc Creation (www.g-truc.net)
-///////////////////////////////////////////////////////////////////////////////////////////////////
-// Created : 2007-04-03
-// Updated : 2008-09-17
-// Licence : This source is under MIT License
-// File    : glm/gtx/mixed_product.hpp
-///////////////////////////////////////////////////////////////////////////////////////////////////
-// Dependency:
-// - GLM core
-///////////////////////////////////////////////////////////////////////////////////////////////////
+/// @ref gtx_mixed_product
+/// @file glm/gtx/mixed_product.hpp
+///
+/// @see core (dependence)
+///
+/// @defgroup gtx_mixed_product GLM_GTX_mixed_producte
+/// @ingroup gtx
+///
+/// Include <glm/gtx/mixed_product.hpp> to use the features of this extension.
+///
+/// Mixed product of 3 vectors.
 
-#ifndef glm_gtx_mixed_product
-#define glm_gtx_mixed_product
+#pragma once
 
 // Dependency:
 #include "../glm.hpp"
 
-#if(defined(GLM_MESSAGES) && !defined(glm_ext))
+#ifndef GLM_ENABLE_EXPERIMENTAL
+#	error "GLM: GLM_GTX_mixed_product is an experimental extension and may change in the future. Use #define GLM_ENABLE_EXPERIMENTAL before including it, if you really want to use it."
+#elif GLM_MESSAGES == GLM_ENABLE && !defined(GLM_EXT_INCLUDED)
 #	pragma message("GLM: GLM_GTX_mixed_product extension included")
 #endif
 
-namespace glm{
-namespace gtx{
-namespace mixed_product ///< GLM_GTX_mixed_product extension: Mixed product of 3 vectors.
+namespace glm
 {
-	/// \addtogroup gtx_mixed_product
+	/// @addtogroup gtx_mixed_product
 	/// @{
 
-	//! \brief Mixed product of 3 vectors (from GLM_GTX_mixed_product extension)
-	template <typename valType> 
-	valType mixedProduct(
-		detail::tvec3<valType> const & v1, 
-		detail::tvec3<valType> const & v2, 
-		detail::tvec3<valType> const & v3);
+	/// @brief Mixed product of 3 vectors (from GLM_GTX_mixed_product extension)
+	template<typename T, qualifier Q>
+	GLM_FUNC_DECL T mixedProduct(
+		vec<3, T, Q> const& v1,
+		vec<3, T, Q> const& v2,
+		vec<3, T, Q> const& v3);
 
 	/// @}
-}// namespace mixed_product
-}// namespace gtx
 }// namespace glm
 
 #include "mixed_product.inl"
-
-namespace glm{using namespace gtx::mixed_product;}
-
-#endif//glm_gtx_mixed_product

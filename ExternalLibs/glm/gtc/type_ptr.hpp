@@ -1,449 +1,230 @@
-///////////////////////////////////////////////////////////////////////////////////////////////////
-// OpenGL Mathematics Copyright (c) 2005 - 2011 G-Truc Creation (www.g-truc.net)
-///////////////////////////////////////////////////////////////////////////////////////////////////
-// Created : 2009-05-06
-// Updated : 2010-04-30
-// Licence : This source is under MIT License
-// File    : glm/gtc/type_ptr.hpp
-///////////////////////////////////////////////////////////////////////////////////////////////////
-// Dependency:
-// - GLM core
-///////////////////////////////////////////////////////////////////////////////////////////////////
+/// @ref gtc_type_ptr
+/// @file glm/gtc/type_ptr.hpp
+///
+/// @see core (dependence)
+/// @see gtc_quaternion (dependence)
+///
+/// @defgroup gtc_type_ptr GLM_GTC_type_ptr
+/// @ingroup gtc
+///
+/// Include <glm/gtc/type_ptr.hpp> to use the features of this extension.
+///
+/// Handles the interaction between pointers and vector, matrix types.
+///
+/// This extension defines an overloaded function, glm::value_ptr. It returns
+/// a pointer to the memory layout of the object. Matrix types store their values
+/// in column-major order.
+///
+/// This is useful for uploading data to matrices or copying data to buffer objects.
+///
+/// Example:
+/// @code
+/// #include <glm/glm.hpp>
+/// #include <glm/gtc/type_ptr.hpp>
+///
+/// glm::vec3 aVector(3);
+/// glm::mat4 someMatrix(1.0);
+///
+/// glUniform3fv(uniformLoc, 1, glm::value_ptr(aVector));
+/// glUniformMatrix4fv(uniformMatrixLoc, 1, GL_FALSE, glm::value_ptr(someMatrix));
+/// @endcode
+///
+/// <glm/gtc/type_ptr.hpp> need to be included to use the features of this extension.
 
-#ifndef glm_gtc_type_ptr
-#define glm_gtc_type_ptr
+#pragma once
 
 // Dependency:
-#include "../glm.hpp"
+#include "../gtc/quaternion.hpp"
+#include "../gtc/vec1.hpp"
+#include "../vec2.hpp"
+#include "../vec3.hpp"
+#include "../vec4.hpp"
+#include "../mat2x2.hpp"
+#include "../mat2x3.hpp"
+#include "../mat2x4.hpp"
+#include "../mat3x2.hpp"
+#include "../mat3x3.hpp"
+#include "../mat3x4.hpp"
+#include "../mat4x2.hpp"
+#include "../mat4x3.hpp"
+#include "../mat4x4.hpp"
 #include <cstring>
 
-#if(defined(GLM_MESSAGES) && !defined(glm_ext))
+#if GLM_MESSAGES == GLM_ENABLE && !defined(GLM_EXT_INCLUDED)
 #	pragma message("GLM: GLM_GTC_type_ptr extension included")
 #endif
 
-namespace glm{
-namespace gtc{
-namespace type_ptr ///< GLM_GTC_type_ptr extension: Get access to vectors & matrices value type address.
-{ 
+namespace glm
+{
+	/// @addtogroup gtc_type_ptr
+	/// @{
 
-	/// \addtogroup gtc_type_ptr
-	///@{
+	/// Return the constant address to the data of the input parameter.
+	/// @see gtc_type_ptr
+	template<typename genType>
+	GLM_FUNC_DECL typename genType::value_type const * value_ptr(genType const& v);
 
-	//! Get the const address of the vector content.
-	//! From GLM_GTC_type_ptr extension.
-	template<typename T>
-	GLM_FUNC_QUALIFIER T const * value_ptr
-	(
-		detail::tvec2<T> const & vec
-	)
-	{
-		return &(vec.x);
-	}
+	/// Build a vector from a pointer.
+	/// @see gtc_type_ptr
+	template <typename T, qualifier Q>
+	GLM_FUNC_DECL vec<1, T, Q> make_vec1(vec<1, T, Q> const& v);
 
-	//! Get the address of the vector content.
-	//! From GLM_GTC_type_ptr extension.
-	template<typename T>
-	GLM_FUNC_QUALIFIER T * value_ptr
-	(
-		detail::tvec2<T> & vec
-	)
-	{
-		return &(vec.x);
-	}
+	/// Build a vector from a pointer.
+	/// @see gtc_type_ptr
+	template <typename T, qualifier Q>
+	GLM_FUNC_DECL vec<1, T, Q> make_vec1(vec<2, T, Q> const& v);
 
-	//! Get the const address of the vector content.
-	//! From GLM_GTC_type_ptr extension.
-	template<typename T>
-	GLM_FUNC_QUALIFIER T const * value_ptr
-	(
-		detail::tvec3<T> const & vec
-	)
-	{
-		return &(vec.x);
-	}
+	/// Build a vector from a pointer.
+	/// @see gtc_type_ptr
+	template <typename T, qualifier Q>
+	GLM_FUNC_DECL vec<1, T, Q> make_vec1(vec<3, T, Q> const& v);
 
-	//! Get the address of the vector content.
-	//! From GLM_GTC_type_ptr extension.
-	template<typename T>
-	GLM_FUNC_QUALIFIER T * value_ptr
-	(
-		detail::tvec3<T> & vec
-	)
-	{
-		return &(vec.x);
-	}
-		
-	//! Get the const address of the vector content.
-	//! From GLM_GTC_type_ptr extension.
-	template<typename T>
-	GLM_FUNC_QUALIFIER T const * value_ptr
-	(	
-		detail::tvec4<T> const & vec
-	)
-	{
-		return &(vec.x);
-	}
+	/// Build a vector from a pointer.
+	/// @see gtc_type_ptr
+	template <typename T, qualifier Q>
+	GLM_FUNC_DECL vec<1, T, Q> make_vec1(vec<4, T, Q> const& v);
 
-	//! Get the address of the vector content.
-	//! From GLM_GTC_type_ptr extension.
-	template<typename T>
-	GLM_FUNC_QUALIFIER T * value_ptr
-	(	
-		detail::tvec4<T> & vec
-	)
-	{
-		return &(vec.x);
-	}
+	/// Build a vector from a pointer.
+	/// @see gtc_type_ptr
+	template <typename T, qualifier Q>
+	GLM_FUNC_DECL vec<2, T, Q> make_vec2(vec<1, T, Q> const& v);
 
-	//! Get the const address of the matrix content.
-	//! From GLM_GTC_type_ptr extension.
-	template<typename T>
-	GLM_FUNC_QUALIFIER T const * value_ptr
-	(
-		detail::tmat2x2<T> const & mat
-	)
-	{
-		return &(mat[0].x);
-	}
+	/// Build a vector from a pointer.
+	/// @see gtc_type_ptr
+	template <typename T, qualifier Q>
+	GLM_FUNC_DECL vec<2, T, Q> make_vec2(vec<2, T, Q> const& v);
 
-	//! Get the address of the matrix content.
-	//! From GLM_GTC_type_ptr extension.
-	template<typename T>
-	GLM_FUNC_QUALIFIER T * value_ptr
-	(
-		detail::tmat2x2<T> & mat
-	)
-	{
-		return &(mat[0].x);
-	}
-		
-	//! Get the const address of the matrix content.
-	//! From GLM_GTC_type_ptr extension.
-	template<typename T>
-	GLM_FUNC_QUALIFIER T const * value_ptr
-	(
-		detail::tmat3x3<T> const & mat
-	)
-	{
-		return &(mat[0].x);
-	}
+	/// Build a vector from a pointer.
+	/// @see gtc_type_ptr
+	template <typename T, qualifier Q>
+	GLM_FUNC_DECL vec<2, T, Q> make_vec2(vec<3, T, Q> const& v);
 
-	//! Get the address of the matrix content.
-	//! From GLM_GTC_type_ptr extension.
-	template<typename T>
-	GLM_FUNC_QUALIFIER T * value_ptr
-	(
-		detail::tmat3x3<T> & mat
-	)
-	{
-		return &(mat[0].x);
-	}
-		
-	//! Get the const address of the matrix content.
-	//! From GLM_GTC_type_ptr extension.
-	template<typename T>
-	GLM_FUNC_QUALIFIER T const * value_ptr
-	(
-		detail::tmat4x4<T> const & mat
-	)
-	{
-		return &(mat[0].x);
-	}
+	/// Build a vector from a pointer.
+	/// @see gtc_type_ptr
+	template <typename T, qualifier Q>
+	GLM_FUNC_DECL vec<2, T, Q> make_vec2(vec<4, T, Q> const& v);
 
-	//! Get the address of the matrix content.
-	//! From GLM_GTC_type_ptr extension.
-	template<typename T>
-	GLM_FUNC_QUALIFIER T * value_ptr
-	(
-		detail::tmat4x4<T> & mat
-	)
-	{
-		return &(mat[0].x);
-	}
+	/// Build a vector from a pointer.
+	/// @see gtc_type_ptr
+	template <typename T, qualifier Q>
+	GLM_FUNC_DECL vec<3, T, Q> make_vec3(vec<1, T, Q> const& v);
 
-	//! Get the const address of the matrix content.
-	//! From GLM_GTC_type_ptr extension.
-	template<typename T>
-	GLM_FUNC_QUALIFIER T const * value_ptr
-	(
-		detail::tmat2x3<T> const & mat
-	)
-	{
-		return &(mat[0].x);
-	}
+	/// Build a vector from a pointer.
+	/// @see gtc_type_ptr
+	template <typename T, qualifier Q>
+	GLM_FUNC_DECL vec<3, T, Q> make_vec3(vec<2, T, Q> const& v);
 
-	//! Get the address of the matrix content.
-	//! From GLM_GTC_type_ptr extension.
-	template<typename T>
-	GLM_FUNC_QUALIFIER T * value_ptr
-	(
-		detail::tmat2x3<T> & mat
-	)
-	{
-		return &(mat[0].x);
-	}
-		
-	//! Get the const address of the matrix content.
-	//! From GLM_GTC_type_ptr extension.
-	template<typename T>
-	GLM_FUNC_QUALIFIER T const * value_ptr
-	(
-		detail::tmat3x2<T> const & mat
-	)
-	{
-		return &(mat[0].x);
-	}
+	/// Build a vector from a pointer.
+	/// @see gtc_type_ptr
+	template <typename T, qualifier Q>
+	GLM_FUNC_DECL vec<3, T, Q> make_vec3(vec<3, T, Q> const& v);
 
-	//! Get the address of the matrix content.
-	//! From GLM_GTC_type_ptr extension.
-	template<typename T>
-	GLM_FUNC_QUALIFIER T * value_ptr
-	(
-		detail::tmat3x2<T> & mat
-	)
-	{
-		return &(mat[0].x);
-	}
-		
-	//! Get the const address of the matrix content.
-	//! From GLM_GTC_type_ptr extension.
-	template<typename T>
-	GLM_FUNC_QUALIFIER T const * value_ptr
-	(
-		detail::tmat2x4<T> const & mat
-	)
-	{
-		return &(mat[0].x);
-	}
+	/// Build a vector from a pointer.
+	/// @see gtc_type_ptr
+	template <typename T, qualifier Q>
+	GLM_FUNC_DECL vec<3, T, Q> make_vec3(vec<4, T, Q> const& v);
 
-	//! Get the address of the matrix content.
-	//! From GLM_GTC_type_ptr extension.
-	template<typename T>
-	GLM_FUNC_QUALIFIER T * value_ptr
-	(
-		detail::tmat2x4<T> & mat
-	)
-	{
-		return &(mat[0].x);
-	}
-		
-	//! Get the const address of the matrix content.
-	//! From GLM_GTC_type_ptr extension.
-	template<typename T>
-	GLM_FUNC_QUALIFIER T const * value_ptr
-	(
-		detail::tmat4x2<T> const & mat
-	)
-	{
-		return &(mat[0].x);
-	}
+	/// Build a vector from a pointer.
+	/// @see gtc_type_ptr
+	template <typename T, qualifier Q>
+	GLM_FUNC_DECL vec<4, T, Q> make_vec4(vec<1, T, Q> const& v);
 
-	//! Get the address of the matrix content.
-	//! From GLM_GTC_type_ptr extension.
-	template<typename T>
-	GLM_FUNC_QUALIFIER T * value_ptr
-	(	
-		detail::tmat4x2<T> & mat
-	)
-	{
-		return &(mat[0].x);
-	}
-		
-	//! Get the const address of the matrix content.
-	//! From GLM_GTC_type_ptr extension.
-	template<typename T>
-	GLM_FUNC_QUALIFIER T const * value_ptr
-	(
-		detail::tmat3x4<T> const & mat
-	)
-	{
-		return &(mat[0].x);
-	}
+	/// Build a vector from a pointer.
+	/// @see gtc_type_ptr
+	template <typename T, qualifier Q>
+	GLM_FUNC_DECL vec<4, T, Q> make_vec4(vec<2, T, Q> const& v);
 
-	//! Get the address of the matrix content.
-	//! From GLM_GTC_type_ptr extension.
-	template<typename T>
-	GLM_FUNC_QUALIFIER T * value_ptr
-	(
-		detail::tmat3x4<T> & mat
-	)
-	{
-		return &(mat[0].x);
-	}
-		
-	//! Get the const address of the matrix content.
-	//! From GLM_GTC_type_ptr extension.
-	template<typename T>
-	GLM_FUNC_QUALIFIER T const * value_ptr
-	(
-		detail::tmat4x3<T> const & mat
-	)
-	{
-		return &(mat[0].x);
-	}
+	/// Build a vector from a pointer.
+	/// @see gtc_type_ptr
+	template <typename T, qualifier Q>
+	GLM_FUNC_DECL vec<4, T, Q> make_vec4(vec<3, T, Q> const& v);
 
-	//! Get the address of the matrix content.
-	//! From GLM_GTC_type_ptr extension.
-	template<typename T>
-	GLM_FUNC_QUALIFIER T * value_ptr(detail::tmat4x3<T> & mat)
-	{
-		return &(mat[0].x);
-	}
+	/// Build a vector from a pointer.
+	/// @see gtc_type_ptr
+	template <typename T, qualifier Q>
+	GLM_FUNC_DECL vec<4, T, Q> make_vec4(vec<4, T, Q> const& v);
 
-	//! Build a vector from a pointer.
-	//! From GLM_GTC_type_ptr extension.
+	/// Build a vector from a pointer.
+	/// @see gtc_type_ptr
 	template<typename T>
-	GLM_FUNC_QUALIFIER detail::tvec2<T> make_vec2(T const * const ptr)
-	{
-		detail::tvec2<T> Result;
-		memcpy(value_ptr(Result), ptr, sizeof(detail::tvec2<T>));
-		return Result;
-	}
+	GLM_FUNC_DECL vec<2, T, defaultp> make_vec2(T const * const ptr);
 
-	//! Build a vector from a pointer.
-	//! From GLM_GTC_type_ptr extension.
+	/// Build a vector from a pointer.
+	/// @see gtc_type_ptr
 	template<typename T>
-	GLM_FUNC_QUALIFIER detail::tvec3<T> make_vec3(T const * const ptr)
-	{
-		detail::tvec3<T> Result;
-		memcpy(value_ptr(Result), ptr, sizeof(detail::tvec3<T>));
-		return Result;
-	}
+	GLM_FUNC_DECL vec<3, T, defaultp> make_vec3(T const * const ptr);
 
-	//! Build a vector from a pointer.
-	//! From GLM_GTC_type_ptr extension.
+	/// Build a vector from a pointer.
+	/// @see gtc_type_ptr
 	template<typename T>
-	GLM_FUNC_QUALIFIER detail::tvec4<T> make_vec4(T const * const ptr)
-	{
-		detail::tvec4<T> Result;
-		memcpy(value_ptr(Result), ptr, sizeof(detail::tvec4<T>));
-		return Result;
-	}
+	GLM_FUNC_DECL vec<4, T, defaultp> make_vec4(T const * const ptr);
 
-	//! Build a matrix from a pointer.
-	//! From GLM_GTC_type_ptr extension.
+	/// Build a matrix from a pointer.
+	/// @see gtc_type_ptr
 	template<typename T>
-	GLM_FUNC_QUALIFIER detail::tmat2x2<T> make_mat2x2(T const * const ptr)
-	{
-		detail::tmat2x2<T> Result;
-		memcpy(value_ptr(Result), ptr, sizeof(detail::tmat2x2<T>));
-		return Result;
-	}
-        
-	//! Build a matrix from a pointer.
-	//! From GLM_GTC_type_ptr extension.
-	template<typename T>
-	GLM_FUNC_QUALIFIER detail::tmat2x3<T> make_mat2x3(T const * const ptr)
-	{
-		detail::tmat2x3<T> Result;
-		memcpy(value_ptr(Result), ptr, sizeof(detail::tmat2x3<T>));
-		return Result;
-	}
-        
-	//! Build a matrix from a pointer.
-	//! From GLM_GTC_type_ptr extension.
-	template<typename T>
-	GLM_FUNC_QUALIFIER detail::tmat2x4<T> make_mat2x4(T const * const ptr)
-	{
-		detail::tmat2x4<T> Result;
-		memcpy(value_ptr(Result), ptr, sizeof(detail::tmat2x4<T>));
-		return Result;
-	}
-        
-	//! Build a matrix from a pointer.
-	//! From GLM_GTC_type_ptr extension.
-	template<typename T>
-	GLM_FUNC_QUALIFIER detail::tmat3x2<T> make_mat3x2(T const * const ptr)
-	{
-		detail::tmat3x2<T> Result;
-		memcpy(value_ptr(Result), ptr, sizeof(detail::tmat3x2<T>));
-		return Result;
-	}
-        
-	//! Build a matrix from a pointer.
-	//! From GLM_GTC_type_ptr extension.
-	template<typename T>
-	GLM_FUNC_QUALIFIER detail::tmat3x3<T> make_mat3x3(T const * const ptr)
-	{
-		detail::tmat3x3<T> Result;
-		memcpy(value_ptr(Result), ptr, sizeof(detail::tmat3x3<T>));
-		return Result;
-	}
+	GLM_FUNC_DECL mat<2, 2, T, defaultp> make_mat2x2(T const * const ptr);
 
-	//! Build a matrix from a pointer.
-	//! From GLM_GTC_type_ptr extension.
+	/// Build a matrix from a pointer.
+	/// @see gtc_type_ptr
 	template<typename T>
-	GLM_FUNC_QUALIFIER detail::tmat3x4<T> make_mat3x4(T const * const ptr)
-	{
-		detail::tmat3x4<T> Result;
-		memcpy(value_ptr(Result), ptr, sizeof(detail::tmat3x4<T>));
-		return Result;
-	}
+	GLM_FUNC_DECL mat<2, 3, T, defaultp> make_mat2x3(T const * const ptr);
 
-        
-	//! Build a matrix from a pointer.
-	//! From GLM_GTC_type_ptr extension.
+	/// Build a matrix from a pointer.
+	/// @see gtc_type_ptr
 	template<typename T>
-	GLM_FUNC_QUALIFIER detail::tmat4x2<T> make_mat4x2(T const * const ptr)
-	{
-		detail::tmat4x2<T> Result;
-		memcpy(value_ptr(Result), ptr, sizeof(detail::tmat4x2<T>));
-		return Result;
-	}
-        
-	//! Build a matrix from a pointer.
-	//! From GLM_GTC_type_ptr extension.
-	template<typename T>
-	GLM_FUNC_QUALIFIER detail::tmat4x3<T> make_mat4x3(T const * const ptr)
-	{
-		detail::tmat4x3<T> Result;
-		memcpy(value_ptr(Result), ptr, sizeof(detail::tmat4x3<T>));
-		return Result;
-	}
-        
-	//! Build a matrix from a pointer.
-	//! From GLM_GTC_type_ptr extension.
-	template<typename T>
-	GLM_FUNC_QUALIFIER detail::tmat4x4<T> make_mat4x4(T const * const ptr)
-	{
-		detail::tmat4x4<T> Result;
-		memcpy(value_ptr(Result), ptr, sizeof(detail::tmat4x4<T>));
-		return Result;
-	}
-        
-	//! Build a matrix from a pointer.
-	//! From GLM_GTC_type_ptr extension.
-	template<typename T>
-	GLM_FUNC_QUALIFIER detail::tmat2x2<T> make_mat2(T const * const ptr)
-	{
-		return make_mat2x2(ptr);
-	}
-        
-	//! Build a matrix from a pointer.
-	//! From GLM_GTC_type_ptr extension.
-	template<typename T>
-	GLM_FUNC_QUALIFIER detail::tmat3x3<T> make_mat3(T const * const ptr)
-	{
-		return make_mat3x3(ptr);
-	}
-		
-	//! Build a matrix from a pointer.
-	//! From GLM_GTC_type_ptr extension.
-	template<typename T>
-	GLM_FUNC_QUALIFIER detail::tmat4x4<T> make_mat4(T const * const ptr)
-	{
-		return make_mat4x4(ptr);
-	}
-        
-	///@}
+	GLM_FUNC_DECL mat<2, 4, T, defaultp> make_mat2x4(T const * const ptr);
 
-}//namespace type_ptr
-}//namespace gtc
+	/// Build a matrix from a pointer.
+	/// @see gtc_type_ptr
+	template<typename T>
+	GLM_FUNC_DECL mat<3, 2, T, defaultp> make_mat3x2(T const * const ptr);
+
+	/// Build a matrix from a pointer.
+	/// @see gtc_type_ptr
+	template<typename T>
+	GLM_FUNC_DECL mat<3, 3, T, defaultp> make_mat3x3(T const * const ptr);
+
+	/// Build a matrix from a pointer.
+	/// @see gtc_type_ptr
+	template<typename T>
+	GLM_FUNC_DECL mat<3, 4, T, defaultp> make_mat3x4(T const * const ptr);
+
+	/// Build a matrix from a pointer.
+	/// @see gtc_type_ptr
+	template<typename T>
+	GLM_FUNC_DECL mat<4, 2, T, defaultp> make_mat4x2(T const * const ptr);
+
+	/// Build a matrix from a pointer.
+	/// @see gtc_type_ptr
+	template<typename T>
+	GLM_FUNC_DECL mat<4, 3, T, defaultp> make_mat4x3(T const * const ptr);
+
+	/// Build a matrix from a pointer.
+	/// @see gtc_type_ptr
+	template<typename T>
+	GLM_FUNC_DECL mat<4, 4, T, defaultp> make_mat4x4(T const * const ptr);
+
+	/// Build a matrix from a pointer.
+	/// @see gtc_type_ptr
+	template<typename T>
+	GLM_FUNC_DECL mat<2, 2, T, defaultp> make_mat2(T const * const ptr);
+
+	/// Build a matrix from a pointer.
+	/// @see gtc_type_ptr
+	template<typename T>
+	GLM_FUNC_DECL mat<3, 3, T, defaultp> make_mat3(T const * const ptr);
+
+	/// Build a matrix from a pointer.
+	/// @see gtc_type_ptr
+	template<typename T>
+	GLM_FUNC_DECL mat<4, 4, T, defaultp> make_mat4(T const * const ptr);
+
+	/// Build a quaternion from a pointer.
+	/// @see gtc_type_ptr
+	template<typename T>
+	GLM_FUNC_DECL qua<T, defaultp> make_quat(T const * const ptr);
+
+	/// @}
 }//namespace glm
 
 #include "type_ptr.inl"
-
-namespace glm{using namespace gtc::type_ptr;}
-
-#endif//glm_gtx_type_ptr
-

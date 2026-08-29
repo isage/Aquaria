@@ -1,101 +1,137 @@
-///////////////////////////////////////////////////////////////////////////////////////////////////
-// OpenGL Mathematics Copyright (c) 2005 - 2011 G-Truc Creation (www.g-truc.net)
-///////////////////////////////////////////////////////////////////////////////////////////////////
-// Created : 2005-01-14
-// Updated : 2011-01-19
-// Licence : This source is under MIT License
-// File    : glm/glm.hpp
-///////////////////////////////////////////////////////////////////////////////////////////////////
+/// @ref core
+/// @file glm/glm.hpp
+///
+/// @mainpage OpenGL Mathematics (GLM)
+/// - Website: <a href="https://glm.g-truc.net">glm.g-truc.net</a>
+/// - <a href="modules.html">GLM API documentation</a>
+/// - <a href="https://github.com/g-truc/glm/blob/master/manual.md">GLM Manual</a>
+///
+/// @defgroup core Core features
+///
+/// @brief Features that implement in C++ the GLSL specification as closely as possible.
+///
+/// The GLM core consists of C++ types that mirror GLSL types and
+/// C++ functions that mirror the GLSL functions.
+///
+/// The best documentation for GLM Core is the current GLSL specification,
+/// <a href="http://www.opengl.org/registry/doc/GLSLangSpec.4.20.8.clean.pdf">version 4.2
+/// (pdf file)</a>.
+///
+/// GLM core functionalities require <glm/glm.hpp> to be included to be used.
+///
+///
+/// @defgroup core_vector Vector types
+///
+/// Vector types of two to four components with an exhaustive set of operators.
+///
+/// @ingroup core
+///
+///
+/// @defgroup core_vector_precision Vector types with precision qualifiers
+///
+/// @brief Vector types with precision qualifiers which may result in various precision in term of ULPs
+///
+/// GLSL allows defining qualifiers for particular variables.
+/// With OpenGL's GLSL, these qualifiers have no effect; they are there for compatibility,
+/// with OpenGL ES's GLSL, these qualifiers do have an effect.
+///
+/// C++ has no language equivalent to qualifier qualifiers. So GLM provides the next-best thing:
+/// a number of typedefs that use a particular qualifier.
+///
+/// None of these types make any guarantees about the actual qualifier used.
+///
+/// @ingroup core
+///
+///
+/// @defgroup core_matrix Matrix types
+///
+/// Matrix types of with C columns and R rows where C and R are values between 2 to 4 included.
+/// These types have exhaustive sets of operators.
+///
+/// @ingroup core
+///
+///
+/// @defgroup core_matrix_precision Matrix types with precision qualifiers
+///
+/// @brief Matrix types with precision qualifiers which may result in various precision in term of ULPs
+///
+/// GLSL allows defining qualifiers for particular variables.
+/// With OpenGL's GLSL, these qualifiers have no effect; they are there for compatibility,
+/// with OpenGL ES's GLSL, these qualifiers do have an effect.
+///
+/// C++ has no language equivalent to qualifier qualifiers. So GLM provides the next-best thing:
+/// a number of typedefs that use a particular qualifier.
+///
+/// None of these types make any guarantees about the actual qualifier used.
+///
+/// @ingroup core
+///
+///
+/// @defgroup ext Stable extensions
+///
+/// @brief Additional features not specified by GLSL specification.
+///
+/// EXT extensions are fully tested and documented.
+///
+/// Even if it's highly unrecommended, it's possible to include all the extensions at once by
+/// including <glm/ext.hpp>. Otherwise, each extension needs to be included  a specific file.
+///
+///
+/// @defgroup gtc Recommended extensions
+///
+/// @brief Additional features not specified by GLSL specification.
+///
+/// GTC extensions aim to be stable with tests and documentation.
+///
+/// Even if it's highly unrecommended, it's possible to include all the extensions at once by
+/// including <glm/ext.hpp>. Otherwise, each extension needs to be included  a specific file.
+///
+///
+/// @defgroup gtx Experimental extensions
+///
+/// @brief Experimental features not specified by GLSL specification.
+///
+/// Experimental extensions are useful functions and types, but the development of
+/// their API and functionality is not necessarily stable. They can change
+/// substantially between versions. Backwards compatibility is not much of an issue
+/// for them.
+///
+/// Even if it's highly unrecommended, it's possible to include all the extensions
+/// at once by including <glm/ext.hpp>. Otherwise, each extension needs to be
+/// included  a specific file.
+///
 
-#include "core/_fixes.hpp"
+#include "detail/_fixes.hpp"
 
-#ifndef glm_glm
-#define glm_glm
+#include "detail/setup.hpp"
+
+#pragma once
 
 #include <cmath>
 #include <climits>
 #include <cfloat>
 #include <limits>
-#include "core/setup.hpp"
+#include <cassert>
+#include "fwd.hpp"
 
-#if(defined(GLM_MESSAGES) && !defined(GLM_MESSAGE_CORE_INCLUDED_DISPLAYED))
-#	define GLM_MESSAGE_CORE_INCLUDED_DISPLAYED
-#	pragma message("GLM: Core library included")
-#endif//GLM_MESSAGE
+#include "vec2.hpp"
+#include "vec3.hpp"
+#include "vec4.hpp"
+#include "mat2x2.hpp"
+#include "mat2x3.hpp"
+#include "mat2x4.hpp"
+#include "mat3x2.hpp"
+#include "mat3x3.hpp"
+#include "mat3x4.hpp"
+#include "mat4x2.hpp"
+#include "mat4x3.hpp"
+#include "mat4x4.hpp"
 
-//! GLM namespace, it contains all GLSL based features.
-namespace glm
-{
-	namespace test
-	{
-		bool main_bug();
-		bool main_core();
-	}//namespace test
-
-	//! GLM core. Namespace that includes all the feature define by GLSL 4.10.6 specification. This namespace is included in glm namespace.
-	namespace core
-	{
-		//! Scalar, vectors and matrices 
-		//! from section 4.1.2 Booleans, 4.1.3 Integers section, 4.1.4 Floats section,
-		//! 4.1.5 Vectors and section 4.1.6 Matrices of GLSL 1.30.8 specification. 
-		//! This namespace resolves precision qualifier define in section 4.5 of GLSL 1.30.8 specification.
-		namespace type{}
-
-		//! Some of the functions defined in section 8 Built-in Functions of GLSL 1.30.8 specification.
-		//! Angle and trigonometry, exponential, common, geometric, matrix and vector relational functions.
-		namespace function{}
-	}
-	//namespace core
-
-	//! G-Truc Creation stable extensions.
-	namespace gtc{}
-
-	//! G-Truc Creation experimental extensions. 
-	//! The interface could change between releases.
-	namespace gtx{}
-
-	//! VIRTREV extensions.
-	namespace img{}
-
-} //namespace glm
-
-#include "./core/_detail.hpp"
-#include "./core/type.hpp"
-
-#include "./core/func_trigonometric.hpp"
-#include "./core/func_exponential.hpp"
-#include "./core/func_common.hpp"
-#include "./core/func_packing.hpp"
-#include "./core/func_geometric.hpp"
-#include "./core/func_matrix.hpp"
-#include "./core/func_vector_relational.hpp"
-#include "./core/func_integer.hpp"
-#include "./core/func_noise.hpp"
-#include "./core/_swizzle.hpp"
-
-namespace glm
-{
- 	using namespace core::type;
-	using namespace core::type::precision;
-	using namespace core::function;
-} //namespace glm
-
-////////////////////
-// check type sizes
-#ifndef GLM_STATIC_ASSERT_NULL
-	GLM_STATIC_ASSERT(sizeof(glm::detail::int8) == 1, "int8 size isn't 1 byte on this platform");
-	GLM_STATIC_ASSERT(sizeof(glm::detail::int16) == 2, "int16 size isn't 2 bytes on this platform");
-	GLM_STATIC_ASSERT(sizeof(glm::detail::int32) == 4, "int32 size isn't 4 bytes on this platform");
-	GLM_STATIC_ASSERT(sizeof(glm::detail::int64) == 8, "int64 size isn't 8 bytes on this platform");
-
-	GLM_STATIC_ASSERT(sizeof(glm::detail::uint8) == 1, "uint8 size isn't 1 byte on this platform");
-	GLM_STATIC_ASSERT(sizeof(glm::detail::uint16) == 2, "uint16 size isn't 2 bytes on this platform");
-	GLM_STATIC_ASSERT(sizeof(glm::detail::uint32) == 4, "uint32 size isn't 4 bytes on this platform");
-	GLM_STATIC_ASSERT(sizeof(glm::detail::uint64) == 8, "uint64 size isn't 8 bytes on this platform");
-
-	GLM_STATIC_ASSERT(sizeof(glm::detail::float16) == 2, "float16 size isn't 2 bytes on this platform");
-	GLM_STATIC_ASSERT(sizeof(glm::detail::float32) == 4, "float32 size isn't 4 bytes on this platform");
-	GLM_STATIC_ASSERT(sizeof(glm::detail::float64) == 8, "float64 size isn't 8 bytes on this platform");
-#endif//GLM_STATIC_ASSERT_NULL
-
-#endif //glm_glm
+#include "trigonometric.hpp"
+#include "exponential.hpp"
+#include "common.hpp"
+#include "packing.hpp"
+#include "geometric.hpp"
+#include "matrix.hpp"
+#include "vector_relational.hpp"
+#include "integer.hpp"

@@ -1,66 +1,58 @@
-///////////////////////////////////////////////////////////////////////////////////////////////////
-// OpenGL Mathematics Copyright (c) 2005 - 2011 G-Truc Creation (www.g-truc.net)
-///////////////////////////////////////////////////////////////////////////////////////////////////
-// Created : 2011-03-05
-// Updated : 2011-03-05
-// Licence : This source is under MIT License
-// File    : glm/gtx/matrix_interpolation.hpp
-///////////////////////////////////////////////////////////////////////////////////////////////////
-// Dependency:
-// - GLM core
-// - GLM_GTX_matric_interpolation
-///////////////////////////////////////////////////////////////////////////////////////////////////
-// This extension has been written by Ghenadii Ursachi (the.asteroth@gmail.com)
-///////////////////////////////////////////////////////////////////////////////////////////////////
+/// @ref gtx_matrix_interpolation
+/// @file glm/gtx/matrix_interpolation.hpp
+/// @author Ghenadii Ursachi (the.asteroth@gmail.com)
+///
+/// @see core (dependence)
+///
+/// @defgroup gtx_matrix_interpolation GLM_GTX_matrix_interpolation
+/// @ingroup gtx
+///
+/// Include <glm/gtx/matrix_interpolation.hpp> to use the features of this extension.
+///
+/// Allows to directly interpolate two matrices.
 
-#ifndef glm_gtx_matrix_interpolation
-#define glm_gtx_matrix_interpolation
+#pragma once
 
 // Dependency:
-//#include "../glm.hpp"
+#include "../glm.hpp"
 
-#if(defined(GLM_MESSAGES) && !defined(glm_ext))
+#ifndef GLM_ENABLE_EXPERIMENTAL
+#	error "GLM: GLM_GTX_matrix_interpolation is an experimental extension and may change in the future. Use #define GLM_ENABLE_EXPERIMENTAL before including it, if you really want to use it."
+#elif GLM_MESSAGES == GLM_ENABLE && !defined(GLM_EXT_INCLUDED)
 #	pragma message("GLM: GLM_GTX_matrix_interpolation extension included")
 #endif
 
-namespace glm{
-namespace gtx{
-namespace matrix_interpolation ///< GLM_GTX_matrix_interpolation extension: Add transformation matrices
+namespace glm
 {
-	/// \addtogroup gtx_matrix_interpolation
+	/// @addtogroup gtx_matrix_interpolation
 	/// @{
 
-	//! Get the axis and angle of the rotation from a matrix.
-    //! From GLM_GTX_matrix_interpolation extension.
-	template <typename T>
-    void axisAngle(
-        detail::tmat4x4<T> const & mat,
-        detail::tvec3<T> & axis,
-        T & angle);
+	/// Get the axis and angle of the rotation from a matrix.
+	/// From GLM_GTX_matrix_interpolation extension.
+	template<typename T, qualifier Q>
+	GLM_FUNC_DISCARD_DECL void axisAngle(
+		mat<4, 4, T, Q> const& Mat, vec<3, T, Q> & Axis, T & Angle);
 
-    //! Build a matrix from axis and angle.
-    //! From GLM_GTX_matrix_interpolation extension.
-	template <typename T>
-    detail::tmat4x4<T> axisAngleMatrix(
-        detail::tvec3<T> const & axis,
-        T const angle);
+	/// Build a matrix from axis and angle.
+	/// From GLM_GTX_matrix_interpolation extension.
+	template<typename T, qualifier Q>
+	GLM_FUNC_DECL mat<4, 4, T, Q> axisAngleMatrix(
+		vec<3, T, Q> const& Axis, T const Angle);
 
-	//! Build a interpolation of 4 * 4 matrixes.
-    //! From GLM_GTX_matrix_interpolation extension.
-    //! Warning! works only with rotation and/or translation matrixes, scale will generate unexpected results.
-	template <typename T>
-    detail::tmat4x4<T> interpolate(
-        detail::tmat4x4<T> const & m1,
-        detail::tmat4x4<T> const & m2,
-        T const delta);
+	/// Extracts the rotation part of a matrix.
+	/// From GLM_GTX_matrix_interpolation extension.
+	template<typename T, qualifier Q>
+	GLM_FUNC_DECL mat<4, 4, T, Q> extractMatrixRotation(
+		mat<4, 4, T, Q> const& Mat);
+
+	/// Build a interpolation of 4 * 4 matrixes.
+	/// From GLM_GTX_matrix_interpolation extension.
+	/// Warning! works only with rotation and/or translation matrixes, scale will generate unexpected results.
+	template<typename T, qualifier Q>
+	GLM_FUNC_DECL mat<4, 4, T, Q> interpolate(
+		mat<4, 4, T, Q> const& m1, mat<4, 4, T, Q> const& m2, T const Delta);
 
 	/// @}
-}//namespace matrix_interpolation
-}//namespace gtx
 }//namespace glm
 
 #include "matrix_interpolation.inl"
-
-namespace glm{using namespace gtx::matrix_interpolation;}
-
-#endif//glm_gtx_transform

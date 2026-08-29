@@ -1,144 +1,119 @@
-///////////////////////////////////////////////////////////////////////////////////////////////////
-// OpenGL Mathematics Copyright (c) 2005 - 2011 G-Truc Creation (www.g-truc.net)
-///////////////////////////////////////////////////////////////////////////////////////////////////
-// Created : 2007-03-05
-// Updated : 2007-03-05
-// Licence : This source is under MIT License
-// File    : glm/gtx/matrix_query.inl
-///////////////////////////////////////////////////////////////////////////////////////////////////
-// Dependency:
-// - GLM core
-///////////////////////////////////////////////////////////////////////////////////////////////////
+/// @ref gtx_matrix_query
 
-namespace glm{
-namespace gtx{
-namespace matrix_query
+namespace glm
 {
-	template<typename T> 
-	GLM_FUNC_QUALIFIER bool isNull(
-		const detail::tmat2x2<T>& m, 
-		const T epsilon)
+	template<typename T, qualifier Q>
+	GLM_FUNC_QUALIFIER bool isNull(mat<2, 2, T, Q> const& m, T const& epsilon)
 	{
 		bool result = true;
-		for(int i = 0; result && i < 2 ; ++i)
+		for(length_t i = 0; result && i < m.length() ; ++i)
 			result = isNull(m[i], epsilon);
 		return result;
 	}
 
-	template<typename T> 
-	GLM_FUNC_QUALIFIER bool isNull(
-		const detail::tmat3x3<T>& m, 
-		const T epsilon)
+	template<typename T, qualifier Q>
+	GLM_FUNC_QUALIFIER bool isNull(mat<3, 3, T, Q> const& m, T const& epsilon)
 	{
 		bool result = true;
-		for(int i = 0; result && i < 3 ; ++i)
+		for(length_t i = 0; result && i < m.length() ; ++i)
 			result = isNull(m[i], epsilon);
 		return result;
 	}
 
-	template<typename T> 
-	GLM_FUNC_QUALIFIER bool isNull(
-		const detail::tmat4x4<T>& m, 
-		const T epsilon)
+	template<typename T, qualifier Q>
+	GLM_FUNC_QUALIFIER bool isNull(mat<4, 4, T, Q> const& m, T const& epsilon)
 	{
 		bool result = true;
-		for(int i = 0; result && i < 4 ; ++i)
+		for(length_t i = 0; result && i < m.length() ; ++i)
 			result = isNull(m[i], epsilon);
 		return result;
 	}
 
-	template<typename genType> 
-	GLM_FUNC_QUALIFIER bool isIdentity(
-		const genType& m, 
-		const typename genType::value_type epsilon)
+	template<length_t C, length_t R, typename T, qualifier Q>
+	GLM_FUNC_QUALIFIER bool isIdentity(mat<C, R, T, Q> const& m, T const& epsilon)
 	{
 		bool result = true;
-		for(typename genType::value_type i = typename genType::value_type(0); result && i < genType::col_size(); ++i)
+		for(length_t i = 0; result && i < m.length(); ++i)
 		{
-			for(typename genType::value_type j = typename genType::value_type(0); result && j < i ; ++j)
+			for(length_t j = 0; result && j < glm::min(i, m[0].length()); ++j)
 				result = abs(m[i][j]) <= epsilon;
-			if(result)
-				result = abs(m[i][i] - typename genType::value_type(1)) <= epsilon;
-			for(typename genType::value_type j = i + typename genType::value_type(1); result && j < genType::row_size(); ++j)
+			if(result && i < m[0].length())
+				result = abs(m[i][i] - 1) <= epsilon;
+			for(length_t j = i + 1; result && j < m[0].length(); ++j)
 				result = abs(m[i][j]) <= epsilon;
 		}
 		return result;
 	}
 
-	template<typename T> 
-	GLM_FUNC_QUALIFIER bool isNormalized(
-		const detail::tmat2x2<T>& m, 
-		const T epsilon)
+	template<typename T, qualifier Q>
+	GLM_FUNC_QUALIFIER bool isNormalized(mat<2, 2, T, Q> const& m, T const& epsilon)
 	{
-		bool result = true;
-		for(int i = 0; result && i < 2; ++i)
+		bool result(true);
+		for(length_t i = 0; result && i < m.length(); ++i)
 			result = isNormalized(m[i], epsilon);
-		for(int i = 0; result && i < 2; ++i)
+		for(length_t i = 0; result && i < m.length(); ++i)
 		{
-			detail::tvec2<T> v;
-			for(int j = 0; j < 2; ++j)
+			typename mat<2, 2, T, Q>::col_type v;
+			for(length_t j = 0; j < m.length(); ++j)
 				v[j] = m[j][i];
 			result = isNormalized(v, epsilon);
 		}
 		return result;
 	}
 
-	template<typename T> 
-	GLM_FUNC_QUALIFIER bool isNormalized(
-		const detail::tmat3x3<T>& m, 
-		const T epsilon)
+	template<typename T, qualifier Q>
+	GLM_FUNC_QUALIFIER bool isNormalized(mat<3, 3, T, Q> const& m, T const& epsilon)
 	{
-		bool result = true;
-		for(int i = 0; result && i < 3; ++i)
+		bool result(true);
+		for(length_t i = 0; result && i < m.length(); ++i)
 			result = isNormalized(m[i], epsilon);
-		for(int i = 0; result && i < 3; ++i)
+		for(length_t i = 0; result && i < m.length(); ++i)
 		{
-			detail::tvec3<T> v;
-			for(int j = 0; j < 3; ++j)
+			typename mat<3, 3, T, Q>::col_type v;
+			for(length_t j = 0; j < m.length(); ++j)
 				v[j] = m[j][i];
 			result = isNormalized(v, epsilon);
 		}
 		return result;
 	}
 
-	template<typename T> 
-	GLM_FUNC_QUALIFIER bool isNormalized(
-		const detail::tmat4x4<T>& m, 
-		const T epsilon)
+	template<typename T, qualifier Q>
+	GLM_FUNC_QUALIFIER bool isNormalized(mat<4, 4, T, Q> const& m, T const& epsilon)
 	{
-		bool result = true;
-		for(int i = 0; result && i < 4; ++i)
+		bool result(true);
+		for(length_t i = 0; result && i < m.length(); ++i)
 			result = isNormalized(m[i], epsilon);
-		for(int i = 0; result && i < 4; ++i)
+		for(length_t i = 0; result && i < m.length(); ++i)
 		{
-			detail::tvec4<T> v;
-			for(int j = 0; j < 4; ++j)
+			typename mat<4, 4, T, Q>::col_type v;
+			for(length_t j = 0; j < m.length(); ++j)
 				v[j] = m[j][i];
 			result = isNormalized(v, epsilon);
 		}
 		return result;
 	}
 
-	template<typename genType> 
-	GLM_FUNC_QUALIFIER bool isOrthogonal(
-		const genType& m, 
-		const typename genType::value_type epsilon)
+	template<length_t C, length_t R, typename T, qualifier Q>
+	GLM_FUNC_QUALIFIER bool isOrthogonal(mat<C, R, T, Q> const& m, T const& epsilon)
 	{
 		bool result = true;
-		for(int i = 0; result && i < genType::col_size() - 1; ++i)
-		for(int j= i + 1; result && j < genType::col_size(); ++j)
-			result = areOrthogonal(m[i], m[j], epsilon);
+		for(length_t i(0); result && i < m.length(); ++i)
+		{
+			result = isNormalized(m[i], epsilon);
+			for(length_t j(i + 1); result && j < m.length(); ++j)
+				result = abs(dot(m[i], m[j])) <= epsilon;
+		}
 
 		if(result)
 		{
-			genType tmp = transpose(m);
-			for(int i = 0; result && i < genType::col_size() - 1 ; ++i)
-			for(int j = i + 1; result && j < genType::col_size(); ++j)
-				result = areOrthogonal(tmp[i], tmp[j], epsilon);
+			mat<C, R, T, Q> tmp = transpose(m);
+			for(length_t i(0); result && i < m.length(); ++i)
+			{
+				result = isNormalized(tmp[i], epsilon);
+				for(length_t j(i + 1); result && j < m.length(); ++j)
+					result = abs(dot(tmp[i], tmp[j])) <= epsilon;
+			}
 		}
 		return result;
 	}
-
-}//namespace matrix_query
-}//namespace gtx
 }//namespace glm
