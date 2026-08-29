@@ -305,7 +305,18 @@ void Emitter::onRender()
 					core->transform.rotate(p->rot.z, 0, 0, 1);
 					if (data.flipH || (data.copyParentFlip && (pe->isfh() || (pe->getParent() && pe->getParent()->isfh()))))
 					{
-						core->transform.rotate(180, 0, 1, 0);
+						// Horizontal-flip trick: was rotate(180, Y-axis), a real 3D
+						// rotation exploiting the unused third dimension. Replaced with
+						// scale(-1,1) - verified via a standalone test (real bundled GLM,
+						// both composition orders used across this codebase's call sites,
+						// point-level comparison) to produce identical results for real
+						// (z=0) 2D sprite geometry; the two only differ in how they treat
+						// z, which no 2D vertex here ever has nonzero. Step 4 of the
+						// performance optimization plan - this needed to happen before,
+						// and separately from, migrating the transform stack itself to
+						// pure 2D affine math, since a 2D affine transform has no third
+						// dimension to rotate through.
+						core->transform.scale(-1, 1);
 					}
 					c0 = core->transform.transformPoint(-dx, +dy);
 					c1 = core->transform.transformPoint(+dx, +dy);

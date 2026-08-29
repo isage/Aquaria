@@ -234,7 +234,18 @@ Vector RenderObject::getInvRotPosition(const Vector &vec)
 	
 		if (chain[i]->isfh())
 		{
-			xf.rotate(180, 0, 1, 0);
+			// Horizontal-flip trick: was rotate(180, Y-axis), a real 3D
+			// rotation exploiting the unused third dimension. Replaced with
+			// scale(-1,1) - verified via a standalone test (real bundled GLM,
+			// both composition orders used across this codebase's call sites,
+			// point-level comparison) to produce identical results for real
+			// (z=0) 2D sprite geometry; the two only differ in how they treat
+			// z, which no 2D vertex here ever has nonzero. Step 4 of the
+			// performance optimization plan - this needed to happen before,
+			// and separately from, migrating the transform stack itself to
+			// pure 2D affine math, since a 2D affine transform has no third
+			// dimension to rotate through.
+			xf.scale(-1, 1);
 		}
 	}
 
@@ -267,7 +278,19 @@ static glm::mat4 matrixChain(const RenderObject *ro)
 	);
 
 	if (ro->isfh())
-		tranformMatrix *= glm::rotate(180.0f, glm::vec3(0.0f, 1.0f, 0.0f));
+	{
+		// Horizontal-flip trick: was rotate(180, Y-axis), a real 3D
+		// rotation exploiting the unused third dimension. Replaced with
+		// scale(-1,1) - verified via a standalone test (real bundled GLM,
+		// both composition orders used across this codebase's call sites,
+		// point-level comparison) to produce identical results for real
+		// (z=0) 2D sprite geometry; the two only differ in how they treat
+		// z, which no 2D vertex here ever has nonzero. This call site
+		// post-multiplies the flip after the chain's own Z-rotation is
+		// already baked in, matching "order B" in that verification.
+		// Step 4 of the performance optimization plan.
+		tranformMatrix *= glm::scale(glm::mat4(1.0f), glm::vec3(-1.0f, 1.0f, 1.0f));
+	}
 
 	tranformMatrix *= glm::translate(glm::vec3(ro->internalOffset.x, ro->internalOffset.y, 0.0f));
 	return tranformMatrix;
@@ -589,7 +612,18 @@ void RenderObject::renderCall()
 				core->transform.translate(position.x, position.y, position.z);
 				if (isfh())
 				{
-					core->transform.rotate(180, 0, 1, 0);
+					// Horizontal-flip trick: was rotate(180, Y-axis), a real 3D
+					// rotation exploiting the unused third dimension. Replaced with
+					// scale(-1,1) - verified via a standalone test (real bundled GLM,
+					// both composition orders used across this codebase's call sites,
+					// point-level comparison) to produce identical results for real
+					// (z=0) 2D sprite geometry; the two only differ in how they treat
+					// z, which no 2D vertex here ever has nonzero. Step 4 of the
+					// performance optimization plan - this needed to happen before,
+					// and separately from, migrating the transform stack itself to
+					// pure 2D affine math, since a 2D affine transform has no third
+					// dimension to rotate through.
+					core->transform.scale(-1, 1);
 				}
 
 				core->transform.rotate(rotation.z+rotationOffset.z, 0, 0, 1);
@@ -601,7 +635,18 @@ void RenderObject::renderCall()
 				core->transform.translate(pos.x, pos.y, pos.z);
 				if (isfh())
 				{
-					core->transform.rotate(180, 0, 1, 0);
+					// Horizontal-flip trick: was rotate(180, Y-axis), a real 3D
+					// rotation exploiting the unused third dimension. Replaced with
+					// scale(-1,1) - verified via a standalone test (real bundled GLM,
+					// both composition orders used across this codebase's call sites,
+					// point-level comparison) to produce identical results for real
+					// (z=0) 2D sprite geometry; the two only differ in how they treat
+					// z, which no 2D vertex here ever has nonzero. Step 4 of the
+					// performance optimization plan - this needed to happen before,
+					// and separately from, migrating the transform stack itself to
+					// pure 2D affine math, since a 2D affine transform has no third
+					// dimension to rotate through.
+					core->transform.scale(-1, 1);
 				}
 				core->transform.rotate(rotation.z+rotationOffset.z, 0, 0, 1);
 			}
@@ -618,7 +663,18 @@ void RenderObject::renderCall()
 			core->transform.rotate(rotation.z+rotationOffset.z, 0, 0, 1);
 			if (isfh())
 			{
-				core->transform.rotate(180, 0, 1, 0);
+				// Horizontal-flip trick: was rotate(180, Y-axis), a real 3D
+				// rotation exploiting the unused third dimension. Replaced with
+				// scale(-1,1) - verified via a standalone test (real bundled GLM,
+				// both composition orders used across this codebase's call sites,
+				// point-level comparison) to produce identical results for real
+				// (z=0) 2D sprite geometry; the two only differ in how they treat
+				// z, which no 2D vertex here ever has nonzero. Step 4 of the
+				// performance optimization plan - this needed to happen before,
+				// and separately from, migrating the transform stack itself to
+				// pure 2D affine math, since a 2D affine transform has no third
+				// dimension to rotate through.
+				core->transform.scale(-1, 1);
 			}
 		}
 				

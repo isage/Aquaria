@@ -1621,6 +1621,34 @@ void Core::main(float runTime)
 			// (false), completely unaffected by Step 3's gating - see
 			// the detailed reasoning at the capturing-decision site in
 			// Core::render() itself.
+			//
+			// KNOWN, UNRESOLVED ISSUE (x86_64 Linux only, not this
+			// project's target platform - confirmed by direct testing
+			// across multiple SDL renderer backends on that platform,
+			// Vulkan/OpenGL/software, all affected identically, and
+			// confirmed fine on the actual target, PS Vita/32-bit ARM,
+			// even with this gating enabled): enabling this parameter at
+			// all - even though real diagnostic data confirmed its skip
+			// branch never actually triggers in the specific test
+			// session that surfaced this (BitBlotLogo.cpp adds a
+			// ShockEffect at the very start of the intro, keeping
+			// AfterEffectManager's effects list non-empty throughout,
+			// correctly preventing a skip) - causes the intro to render
+			// black until fading to white near the end, on that one
+			// platform only. Root cause not found: verified the
+			// suspected memory-safety explanations directly rather than
+			// leaving them as assumptions - auxiliaryCaptureNeeded is
+			// correctly initialized in Core::Core()'s constructor body
+			// (not read before that runs), and AfterEffectManager's
+			// `effects` is a direct (non-pointer) std::vector member,
+			// which the C++ standard guarantees is properly default-
+			// constructed the instant `new AfterEffectManager(...)`
+			// runs, regardless of platform - ruling out the two most
+			// plausible uninitialized-memory explanations. If x86_64
+			// Linux testing shows the intro going black again, this is
+			// the known, confirmed-architecture-specific cause and
+			// exactly where to resume investigating; it does not affect
+			// the target platform this project ships to.
 			render(-1, -1, true, true);
 
 			if (verbose) debugLog("showBuffer");
