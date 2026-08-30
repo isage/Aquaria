@@ -21,6 +21,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "FrameBuffer.h"
 #include "Core.h"
 #include "PerfLog.h"
+#include "DrawBatch.h"
 
 // Render-to-texture via SDL3's SDL_TEXTUREACCESS_TARGET textures, replacing
 // the old GL_EXT_framebuffer_object implementation. Shared by AfterEffect,
@@ -132,10 +133,10 @@ void FrameBuffer::startCapture()
 	if (!renderer) return;
 
 	savedTarget = SDL_GetRenderTarget(renderer);
-	SDL_SetRenderTarget(renderer, texture);
-	PerfLog::countRenderTargetSwitch();
+	DrawBatch::setRenderTarget(renderer, texture);
 
 	SDL_SetRenderDrawColor(renderer, 0, 0, 0, 0);
+	DrawBatch::flush(); // Step 6: defensive flush before a raw clear/blit
 	SDL_RenderClear(renderer);
 }
 
@@ -146,8 +147,7 @@ void FrameBuffer::endCapture()
 	SDL_Renderer *renderer = core->getRenderer();
 	if (!renderer) return;
 
-	SDL_SetRenderTarget(renderer, savedTarget);
-	PerfLog::countRenderTargetSwitch();
+	DrawBatch::setRenderTarget(renderer, savedTarget);
 	savedTarget = 0;
 }
 
@@ -159,17 +159,16 @@ void FrameBuffer::copyFrom(FrameBuffer &other)
 	if (!renderer) return;
 
 	SDL_Texture *prevTarget = SDL_GetRenderTarget(renderer);
-	SDL_SetRenderTarget(renderer, texture);
-	PerfLog::countRenderTargetSwitch();
+	DrawBatch::setRenderTarget(renderer, texture);
 
 	SDL_BlendMode prevBlend = SDL_BLENDMODE_BLEND;
 	SDL_GetTextureBlendMode(other.texture, &prevBlend);
 	SDL_SetTextureBlendMode(other.texture, SDL_BLENDMODE_NONE); // plain copy, not blended
+	DrawBatch::flush(); // Step 6: defensive flush before a raw clear/blit
 	SDL_RenderTexture(renderer, other.texture, NULL, NULL);
 	SDL_SetTextureBlendMode(other.texture, prevBlend);
 
-	SDL_SetRenderTarget(renderer, prevTarget);
-	PerfLog::countRenderTargetSwitch();
+	DrawBatch::setRenderTarget(renderer, prevTarget);
 }
 
 void FrameBuffer::unloadDevice()

@@ -19,6 +19,7 @@ along with this program; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 */
 #include "../BBGE/MathFunctions.h"
+#include "DrawBatch.h"
 #include "RenderState.h"
 #include "PerfLog.h"
 #include "../BBGE/ImageLoader.h"
@@ -142,6 +143,7 @@ void WarpAreaRender::onRender()
 			static const int idx[6] = {0,1,2,0,2,3};
 
 			RenderState::setRenderDrawBlendMode(renderer, SDL_BLENDMODE_BLEND);
+			DrawBatch::flush(); // Step 6: not routed through DrawBatch - must flush first to preserve draw order
 			SDL_RenderGeometry(renderer, NULL, v, 4, idx, 6);
 			PerfLog::countDrawCall();
 		}

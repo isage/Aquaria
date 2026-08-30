@@ -20,6 +20,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 */
 #include "TTFFont.h"
 #include "Core.h"
+#include "DrawBatch.h"
 
 // One text engine shared by every TTFFont, since it's scoped to the
 // SDL_Renderer (of which this engine only ever has one), not to any
@@ -308,6 +309,20 @@ static void drawLine(TTFFont *ttfFont, const std::string &line, float x, float y
 	TTF_SetTextColorFloat(text, r, g, b, a);
 
 	glm::vec3 wp = core->transform.transformPoint(x, y);
+	// Step 6 of the performance optimization plan: TTF_DrawRendererText()
+	// is SDL3_ttf's own internal drawing function - it draws immediately,
+	// bypassing DrawBatch entirely (this codebase can't modify its
+	// internals, unlike the earlier glfont2.h fix for the same class of
+	// bug). My original codebase-wide sweep only searched for
+	// SDL_Render*/SDL_SetRenderTarget call patterns, which don't match
+	// this SDL3_ttf-specific function name - confirmed via real
+	// playtesting: subtitle text (which uses this TTFFont path, not
+	// BitmapFont/glfont2) caused a scene-darkening overlay to
+	// intermittently vanish, and disappear entirely with subtitles
+	// disabled, for exactly the reason described in the glfont2.h fix's
+	// comment - a pending batch left deferred while this text drew
+	// immediately. Flushing here first prevents that.
+	DrawBatch::flush();
 	TTF_DrawRendererText(text, wp.x, wp.y);
 
 	TTF_DestroyText(text);

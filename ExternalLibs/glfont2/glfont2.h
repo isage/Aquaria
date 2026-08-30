@@ -13,6 +13,8 @@
 #include <SDL3/SDL.h>
 #include <glm/glm.hpp>
 #include "Core.h"
+#include "RenderState.h"
+#include "DrawBatch.h"
 
 //*******************************************************************
 //GLFont Interface
@@ -167,9 +169,24 @@ public:
 		if (!verts.empty())
 		{
 			if (tex)
-				SDL_SetTextureBlendMode(tex, SDL_BLENDMODE_BLEND);
+				RenderState::setTextureBlendMode(tex, SDL_BLENDMODE_BLEND);
 			else
-				SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_BLEND);
+				RenderState::setRenderDrawBlendMode(renderer, SDL_BLENDMODE_BLEND);
+			// Step 6 of the performance optimization plan: this call was
+			// missed by the original codebase-wide sweep (it lives in
+			// ExternalLibs/, which that sweep's search scope didn't
+			// cover - BBGE/*.cpp and Aquaria/*.cpp patterns only).
+			// Confirmed via real playtesting: without this flush, any
+			// pending DrawBatch-accumulated content (e.g. a dark
+			// background box behind this text, submitted earlier but not
+			// yet actually drawn) would stay deferred while this text
+			// draws immediately - making the text appear to jump ahead
+			// of content that was supposed to be drawn first, or a
+			// still-pending box appear on top of text drawn after it,
+			// depending on timing. This is exactly why DrawBatch.h's
+			// safety model requires every non-participating draw site to
+			// flush first, without exception.
+			DrawBatch::flush();
 			SDL_RenderGeometry(renderer, tex, verts.data(), (int)verts.size(), indices.data(), (int)indices.size());
 		}
 	}

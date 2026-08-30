@@ -19,6 +19,7 @@ along with this program; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 */
 #include "DarkLayer.h"
+#include "DrawBatch.h"
 #include "RenderState.h"
 #include "PerfLog.h"
 #include "Core.h"
@@ -151,6 +152,7 @@ void DarkLayer::render()
 		v[3].position={p3.x,p3.y}; v[3].tex_coord={1,1}; v[3].color=white;
 		static const int idx[6] = {0,1,2,0,2,3};
 
+		DrawBatch::flush(); // Step 6: not routed through DrawBatch - must flush first to preserve draw order
 		SDL_RenderGeometry(renderer, tex, v, 4, idx, 6);
 		PerfLog::countDrawCall();
 		RenderObject::lastTextureApplied = 0;

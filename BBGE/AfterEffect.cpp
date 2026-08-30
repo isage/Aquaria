@@ -19,6 +19,7 @@ along with this program; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 */
 #include "AfterEffect.h"
+#include "DrawBatch.h"
 #include "RenderState.h"
 #include "PerfLog.h"
 //#include "math.h"
@@ -171,6 +172,7 @@ void AfterEffectManager::render()
 	// captured.
 	core->frameBuffer.endCapture();
 
+	DrawBatch::flush(); // Step 6: defensive flush before a raw clear, even though endCapture()'s target switch already flushed internally
 	SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
 	SDL_RenderClear(renderer);
 
@@ -239,6 +241,7 @@ void AfterEffectManager::renderGrid(const RenderTransformStack &xf)
 		}
 	}
 
+	DrawBatch::flush(); // Step 6: not routed through DrawBatch - must flush first to preserve draw order
 	SDL_RenderGeometry(renderer, tex, verts.data(), (int)verts.size(), indices.data(), (int)indices.size());
 	PerfLog::countDrawCall();
 	RenderObject::lastTextureApplied = 0;

@@ -19,6 +19,7 @@ along with this program; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 */
 #include "Gradient.h"
+#include "DrawBatch.h"
 #include "RenderState.h"
 #include "PerfLog.h"
 #include "Core.h"
@@ -91,6 +92,7 @@ void Gradient::onRender()
 	static const int indices[6] = {0,1,2,0,2,3};
 
 	RenderState::setRenderDrawBlendMode(renderer, currentBlendMode);
+	DrawBatch::flush(); // Step 6: not routed through DrawBatch - must flush first to preserve draw order
 	SDL_RenderGeometry(renderer, NULL, v, 4, indices, 6);
 	PerfLog::countDrawCall();
 }

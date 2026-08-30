@@ -20,6 +20,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 */
 #include "Quad.h"
 #include "RenderState.h"
+#include "DrawBatch.h"
 #include "PerfLog.h"
 #include "Core.h"
 
@@ -463,6 +464,7 @@ void Quad::renderGrid()
 			RenderState::setTextureBlendMode(tex, currentBlendMode);
 		else
 			RenderState::setRenderDrawBlendMode(renderer, currentBlendMode);
+		DrawBatch::flush(); // Step 6: strip/grid mode, variable vertex count - not routed through DrawBatch, must flush first
 		SDL_RenderGeometry(renderer, tex, verts.data(), (int)verts.size(), indices.data(), (int)indices.size());
 		PerfLog::countDrawCall();
 	}
@@ -478,6 +480,7 @@ void Quad::repeatTextureToFill(bool on)
 
 void Quad::onRender()
 {
+
 	if (!renderQuad) return;
 
 
@@ -526,6 +529,7 @@ void Quad::onRender()
 				RenderState::setTextureBlendMode(tex, currentBlendMode);
 			else
 				RenderState::setRenderDrawBlendMode(renderer, currentBlendMode);
+			DrawBatch::flush(); // Step 6: strip/grid mode, variable vertex count - not routed through DrawBatch, must flush first
 			SDL_RenderGeometry(renderer, tex, verts.data(), (int)verts.size(), indices.data(), (int)indices.size());
 			PerfLog::countDrawCall();
 		}
@@ -554,6 +558,7 @@ void Quad::onRender()
 				glm::vec3 wp1 = core->transform.transformPoint(+_w2, +_h2);
 				glm::vec3 wp2 = core->transform.transformPoint(+_w2, -_h2);
 				glm::vec3 wp3 = core->transform.transformPoint(-_w2, -_h2);
+
 
 				// wp0/wp1 are the BOTTOM screen vertices (+_h2, Y-down),
 				// wp2/wp3 are the TOP screen vertices (-_h2). With V=0 at
@@ -589,13 +594,17 @@ void Quad::onRender()
 
 				static const int indices[6] = { 0, 1, 2, 0, 2, 3 };
 
-				if (tex)
-					RenderState::setTextureBlendMode(tex, currentBlendMode);
-				else
-					RenderState::setRenderDrawBlendMode(renderer, currentBlendMode);
-
-				SDL_RenderGeometry(renderer, tex, verts, 4, indices, 6);
-				PerfLog::countDrawCall();
+				// Step 6 of the performance optimization plan: routed
+				// through DrawBatch instead of a direct
+				// SDL_RenderGeometry() call - this is the single
+				// highest-traffic draw path in the engine (every plain
+				// Quad, tiles, sprites, UI), so it's the one converted to
+				// participate in adjacent-run batching. Every other draw
+				// call site in the codebase was updated to flush first -
+				// see DrawBatch.h's safety model comment and the
+				// migration notes for the full list.
+				DrawBatch::submit(renderer, tex, currentBlendMode, verts, 4, indices, 6);
+				PerfLog::countBatchSubmit();
 			}
 		}
 		else

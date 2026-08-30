@@ -22,6 +22,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #define BBGE_QUAD_DRAW_HELPER_H
 
 #include "Core.h"
+#include "DrawBatch.h"
 #include "RenderState.h"
 #include "PerfLog.h"
 
@@ -72,6 +73,7 @@ inline void drawTexturedQuad(SDL_Renderer *renderer, SDL_Texture *tex,
 		RenderState::setTextureBlendMode(tex, blend);
 	else
 		RenderState::setRenderDrawBlendMode(renderer, blend);
+	DrawBatch::flush(); // Step 6: not routed through DrawBatch - must flush first to preserve draw order
 	SDL_RenderGeometry(renderer, tex, v, 4, idx, 6);
 	PerfLog::countDrawCall();
 }

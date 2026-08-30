@@ -19,6 +19,7 @@ along with this program; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 */
 #include "Base.h"
+#include "DrawBatch.h"
 #include "PerfLog.h"
 #include "Core.h"
 #include <algorithm>
@@ -391,6 +392,7 @@ void drawCircle(float radius, int stepSize, float r, float g, float b, float a)
 	}
 
 	if (!indices.empty())
+		DrawBatch::flush(); // Step 6: not routed through DrawBatch - must flush first to preserve draw order
 		SDL_RenderGeometry(renderer, NULL, verts.data(), (int)verts.size(), indices.data(), (int)indices.size());
 		PerfLog::countDrawCall();
 }

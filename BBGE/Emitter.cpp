@@ -19,6 +19,7 @@ along with this program; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 */
 #include "Particles.h"
+#include "DrawBatch.h"
 #include "RenderState.h"
 #include "PerfLog.h"
 #include <vector>
@@ -350,6 +351,7 @@ void Emitter::onRender()
 		{
 			if (tex) RenderState::setTextureBlendMode(tex, currentBlendMode);
 			else RenderState::setRenderDrawBlendMode(renderer, currentBlendMode);
+			DrawBatch::flush(); // Step 6: not routed through DrawBatch - must flush first to preserve draw order
 			SDL_RenderGeometry(renderer, tex, verts.data(), (int)verts.size(), indices.data(), (int)indices.size());
 			PerfLog::countDrawCall();
 		}
@@ -396,6 +398,7 @@ void Emitter::onRender()
 		{
 			if (tex) RenderState::setTextureBlendMode(tex, currentBlendMode);
 			else RenderState::setRenderDrawBlendMode(renderer, currentBlendMode);
+			DrawBatch::flush(); // Step 6: not routed through DrawBatch - must flush first to preserve draw order
 			SDL_RenderGeometry(renderer, tex, verts.data(), (int)verts.size(), indices.data(), (int)indices.size());
 			PerfLog::countDrawCall();
 		}

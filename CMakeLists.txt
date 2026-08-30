@@ -379,6 +379,7 @@ SET(BBGE_SRCS
     ${BBGEDIR}/Cube.cpp
     ${BBGEDIR}/DarkLayer.cpp
     ${BBGEDIR}/DebugFont.cpp
+    ${BBGEDIR}/DrawBatch.cpp
     ${BBGEDIR}/Effects.cpp
     ${BBGEDIR}/Emitter.cpp
     ${BBGEDIR}/Event.cpp

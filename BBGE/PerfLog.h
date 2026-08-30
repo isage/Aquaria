@@ -80,6 +80,15 @@ namespace PerfLog
 	void countCaptureSkipped();
 	void countCaptureEngaged();
 
+	// Step 6-specific: how many individual draws were submitted to
+	// DrawBatch vs how many actual SDL_RenderGeometry() calls that
+	// turned into after merging consecutive same-(texture,blend) draws.
+	// The ratio between these two directly shows batching effectiveness
+	// for a given test run - e.g. 100 submits collapsing into 10 flushes
+	// is a real 10x reduction in SDL calls for that scene.
+	void countBatchSubmit();
+	void countBatchFlush();
+
 	// Enable/disable at runtime (defaults to on) - useful for isolating
 	// a specific test run without a rebuild.
 	void setEnabled(bool enabled);

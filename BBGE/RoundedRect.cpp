@@ -19,6 +19,7 @@ along with this program; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 */
 #include "RoundedRect.h"
+#include "DrawBatch.h"
 #include "RenderState.h"
 #include "PerfLog.h"
 #include "Core.h"
@@ -173,6 +174,7 @@ void RoundedRect::onRender()
 	if (!verts.empty())
 	{
 		RenderState::setRenderDrawBlendMode(renderer, currentBlendMode);
+		DrawBatch::flush(); // Step 6: not routed through DrawBatch - must flush first to preserve draw order
 		SDL_RenderGeometry(renderer, NULL, verts.data(), (int)verts.size(), indices.data(), (int)indices.size());
 		PerfLog::countDrawCall();
 	}
@@ -290,6 +292,7 @@ void RoundButton::onRender()
 		v[3].position = {ul.x, ul.y};
 		v[0].color = v[1].color = v[2].color = v[3].color = {1,1,1,0.5f};
 		static const int idx[6] = {0,1,2,0,2,3};
+		DrawBatch::flush(); // Step 6: not routed through DrawBatch - must flush first to preserve draw order
 		SDL_RenderGeometry(renderer, NULL, v, 4, idx, 6);
 		PerfLog::countDrawCall();
 	}

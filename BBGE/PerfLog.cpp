@@ -45,6 +45,8 @@ static uint32_t s_stateChangesApplied = 0;
 static uint32_t s_renderTargetSwitches = 0;
 static uint32_t s_captureSkipped = 0;
 static uint32_t s_captureEngaged = 0;
+static uint32_t s_batchSubmits = 0;
+static uint32_t s_batchFlushes = 0;
 static uint64_t s_frameStartTicks = 0;
 static uint64_t s_updateStartTicks = 0;
 static double s_lastUpdateMs = 0.0;
@@ -66,6 +68,8 @@ static uint64_t s_stateAppliedSum = 0;
 static uint64_t s_targetSwitchSum = 0;
 static uint64_t s_captureSkippedSum = 0;
 static uint64_t s_captureEngagedSum = 0;
+static uint64_t s_batchSubmitSum = 0;
+static uint64_t s_batchFlushSum = 0;
 
 static void lazyInit()
 {
@@ -83,7 +87,8 @@ static void lazyInit()
 			<< "-frame window.\n";
 		s_out << "# frameTimeMs(min/avg/max) updateTimeMs(min/avg/max) "
 			"drawCalls(avg) stateChangesApplied(avg) stateChangesSkipped(avg) "
-			"renderTargetSwitches(avg) captureEngaged(avg)/captureSkipped(avg)\n";
+			"renderTargetSwitches(avg) captureEngaged(avg)/captureSkipped(avg) "
+			"batchSubmits(avg)/batchFlushes(avg)\n";
 		s_out.flush();
 	}
 }
@@ -101,6 +106,8 @@ static void flushWindow()
 	double avgSwitches = double(s_targetSwitchSum) / s_framesInWindow;
 	double avgCaptureEngaged = double(s_captureEngagedSum) / s_framesInWindow;
 	double avgCaptureSkipped = double(s_captureSkippedSum) / s_framesInWindow;
+	double avgBatchSubmits = double(s_batchSubmitSum) / s_framesInWindow;
+	double avgBatchFlushes = double(s_batchFlushSum) / s_framesInWindow;
 
 	std::ostringstream os;
 	os.setf(std::ios::fixed);
@@ -113,7 +120,9 @@ static void flushWindow()
 		<< "stateSkipped=" << avgSkipped << "  "
 		<< "targetSwitches=" << avgSwitches << "  "
 		<< "captureEngaged=" << avgCaptureEngaged << "  "
-		<< "captureSkipped=" << avgCaptureSkipped;
+		<< "captureSkipped=" << avgCaptureSkipped << "  "
+		<< "batchSubmits=" << avgBatchSubmits << "  "
+		<< "batchFlushes=" << avgBatchFlushes;
 
 	s_out << os.str() << std::endl; // flush every window - this is already throttled to WINDOW_SIZE frames, an explicit flush here is cheap and means a crash doesn't lose the last window's data
 
@@ -130,6 +139,8 @@ static void flushWindow()
 	s_targetSwitchSum = 0;
 	s_captureSkippedSum = 0;
 	s_captureEngagedSum = 0;
+	s_batchSubmitSum = 0;
+	s_batchFlushSum = 0;
 }
 
 void setEnabled(bool enabled)
@@ -170,6 +181,8 @@ void beginFrame()
 	s_renderTargetSwitches = 0;
 	s_captureSkipped = 0;
 	s_captureEngaged = 0;
+	s_batchSubmits = 0;
+	s_batchFlushes = 0;
 	s_frameStartTicks = SDL_GetPerformanceCounter();
 }
 
@@ -204,6 +217,8 @@ void endFrame()
 	s_targetSwitchSum += s_renderTargetSwitches;
 	s_captureSkippedSum += s_captureSkipped;
 	s_captureEngagedSum += s_captureEngaged;
+	s_batchSubmitSum += s_batchSubmits;
+	s_batchFlushSum += s_batchFlushes;
 	s_framesInWindow++;
 
 	if (s_framesInWindow >= WINDOW_SIZE)
@@ -216,5 +231,7 @@ void countStateChangeApplied() { if (s_enabled) s_stateChangesApplied++; }
 void countRenderTargetSwitch() { if (s_enabled) s_renderTargetSwitches++; }
 void countCaptureSkipped() { if (s_enabled) s_captureSkipped++; }
 void countCaptureEngaged() { if (s_enabled) s_captureEngaged++; }
+void countBatchSubmit() { if (s_enabled) s_batchSubmits++; }
+void countBatchFlush() { if (s_enabled) s_batchFlushes++; }
 
 } // namespace PerfLog

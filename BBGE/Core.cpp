@@ -24,6 +24,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "Particles.h"
 #include "TTFFont.h"
 #include "PerfLog.h"
+#include "DrawBatch.h"
 
 #include <time.h>
 #include <iostream>
@@ -1010,9 +1011,11 @@ bool Core::initGraphicsLibrary(int width, int height, bool fullscreen, int vsync
 	setWindowCaption(appName, appName);
 
 	SDL_SetRenderDrawColor(gRenderer, 0, 0, 0, 255);
+	DrawBatch::flush(); // Step 6: defensive flush before a raw clear/blit
 	SDL_RenderClear(gRenderer);
 	SDL_RenderPresent(gRenderer);
 	SDL_SetRenderDrawColor(gRenderer, 0, 0, 0, 255);
+	DrawBatch::flush(); // Step 6: defensive flush before a raw clear/blit
 	SDL_RenderClear(gRenderer);
 	SDL_RenderPresent(gRenderer);
 	const char *name = SDL_GetCurrentVideoDriver();
@@ -1790,6 +1793,7 @@ void Core::clearBuffers()
 			Uint8 g = (Uint8)(clearColor.y * 255);
 			Uint8 b = (Uint8)(clearColor.z * 255);
 			SDL_SetRenderDrawColor(gRenderer, r, g, b, 255);
+			DrawBatch::flush(); // Step 6: defensive flush before a raw clear/blit
 			SDL_RenderClear(gRenderer);
 		}
 	}
@@ -2386,11 +2390,33 @@ void Core::render(int startLayer, int endLayer, bool useFrameBufferIfAvail, bool
 			if (SDL_GetRenderTarget(renderer) == NULL)
 			{
 				SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
+				DrawBatch::flush(); // Step 6: defensive flush before a raw clear/blit
 				SDL_RenderClear(renderer);
+				DrawBatch::flush(); // Step 6: defensive flush before a raw clear/blit
 				SDL_RenderTexture(renderer, core->frameBuffer.getTexture(), NULL, NULL);
 			}
 		}
 	}
+
+	// Step 6 of the performance optimization plan: THE critical missing
+	// piece, found via real playtesting after extensive diagnostic work
+	// confirmed everything upstream (alpha, effectiveAlpha, geometry,
+	// renderQuad) was correct - a batch that's still accumulating when
+	// this function returns, with nothing afterward to trigger a flush
+	// via a state change, would simply never reach SDL_RenderGeometry()
+	// at all. It just sits in the accumulator - not drawn this frame,
+	// not drawn next frame either unless something coincidentally
+	// flushes it, potentially merging with next frame's unrelated
+	// content if it ever does. This is exactly why a correctly-computed,
+	// correctly-reached draw (dsq->overlay's fade) could still never
+	// visually appear, and why its visibility could vary frame to frame
+	// ("flashing") depending on what else happened to draw that frame
+	// and trigger a flush as a side effect. Every other flush in this
+	// codebase is "flush before a specific non-participating draw call"
+	// - this is the one, single catch-all needed to guarantee nothing
+	// is ever left pending when a frame's rendering is considered done,
+	// regardless of what the very last thing drawn happened to be.
+	DrawBatch::flush();
 }
 
 void Core::showBuffer()
@@ -2947,18 +2973,19 @@ void Core::saveSizedScreenshotTGA(const std::string &filename, int sz, int crop3
 		if (outTex)
 		{
 			SDL_Texture *prevTarget = SDL_GetRenderTarget(renderer);
-			SDL_SetRenderTarget(renderer, outTex);
+			DrawBatch::setRenderTarget(renderer, outTex);
 
 			SDL_Texture *srcTex = core->frameBuffer.getTexture();
 			SDL_FRect srcRect = { (float)diff, 0.0f, (float)width, (float)height };
 			SDL_BlendMode prevBlend = SDL_BLENDMODE_BLEND;
 			SDL_GetTextureBlendMode(srcTex, &prevBlend);
 			SDL_SetTextureBlendMode(srcTex, SDL_BLENDMODE_NONE);
+			DrawBatch::flush(); // Step 6: defensive flush before a raw clear/blit
 			SDL_RenderTexture(renderer, srcTex, &srcRect, NULL);
 			SDL_SetTextureBlendMode(srcTex, prevBlend);
 
 			SDL_Surface *surf = SDL_RenderReadPixels(renderer, NULL);
-			SDL_SetRenderTarget(renderer, prevTarget);
+			DrawBatch::setRenderTarget(renderer, prevTarget);
 
 			if (surf)
 			{
@@ -3002,17 +3029,18 @@ void Core::save64x64ScreenshotTGA(const std::string &filename)
 		if (thumbTex)
 		{
 			SDL_Texture *prevTarget = SDL_GetRenderTarget(renderer);
-			SDL_SetRenderTarget(renderer, thumbTex);
+			DrawBatch::setRenderTarget(renderer, thumbTex);
 
 			SDL_Texture *srcTex = core->frameBuffer.getTexture();
 			SDL_BlendMode prevBlend = SDL_BLENDMODE_BLEND;
 			SDL_GetTextureBlendMode(srcTex, &prevBlend);
 			SDL_SetTextureBlendMode(srcTex, SDL_BLENDMODE_NONE);
+			DrawBatch::flush(); // Step 6: defensive flush before a raw clear/blit
 			SDL_RenderTexture(renderer, srcTex, NULL, NULL); // scales to fill thumbTex
 			SDL_SetTextureBlendMode(srcTex, prevBlend);
 
 			SDL_Surface *surf = SDL_RenderReadPixels(renderer, NULL);
-			SDL_SetRenderTarget(renderer, prevTarget);
+			DrawBatch::setRenderTarget(renderer, prevTarget);
 
 			if (surf)
 			{

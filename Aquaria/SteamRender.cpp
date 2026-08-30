@@ -19,6 +19,7 @@ along with this program; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 */
 #include "GridRender.h"
+#include "DrawBatch.h"
 #include "RenderState.h"
 #include "PerfLog.h"
 
@@ -117,6 +118,7 @@ void SteamRender::onRender()
 
 							if (tex) RenderState::setTextureBlendMode(tex, currentBlendMode);
 							else RenderState::setRenderDrawBlendMode(renderer, currentBlendMode);
+							DrawBatch::flush(); // Step 6: not routed through DrawBatch - must flush first to preserve draw order
 							SDL_RenderGeometry(renderer, tex, v, 8, idx, 18);
 							PerfLog::countDrawCall();
 						}
