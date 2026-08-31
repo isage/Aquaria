@@ -42,13 +42,6 @@ namespace WorldMapRenderNamespace
 	// overlook things on the edge of the screen while moving.)
 	const float visitedFraction	= 0.8;
 
-	enum VisMethod
-	{
-		VIS_VERTEX		= 0, // Uses the RenderObject tile grid (RenderObject::setSegs()) to display visited areas
-		VIS_WRITE		= 1  // Uses render-to-texture instead
-	};
-
-	const VisMethod visMethod = VIS_VERTEX;
 	WorldMapRevealMethod revMethod = REVEAL_DEFAULT;
 
 	std::vector<Quad *> tiles;
@@ -538,82 +531,6 @@ static void tileDataToVis(WorldMapTile *tile, Vector **vis)
 	}
 }
 
-// Returns a copy of the original texture data.
-static unsigned char *tileDataToAlpha(WorldMapTile *tile)
-{
-	const unsigned char *data = tile->getData();
-	const unsigned int ab = int(baseMapSegAlpha * (1<<8) + 0.5f);
-	const unsigned int av = int(visibleMapSegAlpha * (1<<8) + 0.5f);
-
-	const unsigned int texWidth = tile->q->texture->width;
-	const unsigned int texHeight = tile->q->texture->height;
-	if (texWidth % MAPVIS_SUBDIV != 0 || texHeight % MAPVIS_SUBDIV != 0)
-	{
-		std::ostringstream os;
-		os << "Texture size " << texWidth << "x" << texHeight
-		   << " not a multiple of MAPVIS_SUBDIV " << MAPVIS_SUBDIV
-		   << ", can't edit";
-		debugLog(os.str());
-		return 0;
-	}
-	const unsigned int scaleX = texWidth / MAPVIS_SUBDIV;
-	const unsigned int scaleY = texHeight / MAPVIS_SUBDIV;
-
-	unsigned char *savedTexData = new unsigned char[texWidth * texHeight * 4];
-	tile->q->texture->read(0, 0, texWidth, texHeight, savedTexData);
-
-	unsigned char *texData = new unsigned char[texWidth * texHeight * 4];
-	memcpy(texData, savedTexData, texWidth * texHeight * 4);
-
-	if (data != 0)
-	{
-		const unsigned int rowSize = MAPVIS_SUBDIV/8;
-		for (unsigned int y = 0; y < MAPVIS_SUBDIV; y++, data += rowSize)
-		{
-			unsigned char *texOut = &texData[(y*scaleY) * texWidth * 4];
-			for (unsigned int x = 0; x < MAPVIS_SUBDIV; x += 8)
-			{
-				unsigned char dataByte = data[x/8];
-				for (unsigned int x2 = 0; x2 < 8; x2++, texOut += scaleX*4)
-				{
-					const bool visited = (dataByte & (1 << x2)) != 0;
-					const unsigned int alphaMod = visited ? av : ab;
-					for (unsigned int pixelY = 0; pixelY < scaleY; pixelY++)
-					{
-						unsigned char *ptr = &texOut[pixelY * texWidth * 4];
-						for (unsigned int pixelX = 0; pixelX < scaleX; pixelX++, ptr += 4)
-						{
-							if (ptr[3] == 0)
-								continue;
-							ptr[3] = (ptr[3] * alphaMod + 128) >> 8;
-						}
-					}
-				}
-			}
-		}
-	}
-	else
-	{
-		unsigned char *texOut = texData;
-		for (unsigned int y = 0; y < texHeight; y++)
-		{
-			for (unsigned int x = 0; x < texWidth; x++, texOut += 4)
-			{
-				texOut[3] = (texOut[3] * ab + 128) >> 8;
-			}
-		}
-	}
-
-	tile->q->texture->write(0, 0, texWidth, texHeight, texData);
-	delete[] texData;
-
-	return savedTexData;
-}
-
-static void resetTileAlpha(WorldMapTile *tile, const unsigned char *savedTexData)
-{
-	tile->q->texture->write(0, 0, tile->q->texture->width, tile->q->texture->height, savedTexData);
-}
 
 #endif  // AQUARIA_BUILD_MAPVIS
 
@@ -633,15 +550,8 @@ void WorldMapRender::setVis(WorldMapTile *tile)
 	tile->q->color = Vector(1,1,1);
 	tile->q->alphaMod = 1;
 	
-	if (visMethod == VIS_VERTEX)
-	{
-		tile->q->setSegs(MAPVIS_SUBDIV, MAPVIS_SUBDIV, 0, 0, 0, 0, 2.0, 1);
-		tileDataToVis(tile, tile->q->getDrawGrid());
-	}
-	else if (visMethod == VIS_WRITE)
-	{
-		savedTexData = tileDataToAlpha(tile);
-	}
+	tile->q->setSegs(MAPVIS_SUBDIV, MAPVIS_SUBDIV, 0, 0, 0, 0, 2.0, 1);
+	tileDataToVis(tile, tile->q->getDrawGrid());
 
 	lastVisQuad = tile->q;
 	lastVisTile = tile;
@@ -652,20 +562,8 @@ void WorldMapRender::clearVis(WorldMapTile *tile)
 {
 	if (!tile) return;
 #ifdef AQUARIA_BUILD_MAPVIS
-	if (visMethod == VIS_VERTEX)
-	{
-		if (tile->q)
-			tile->q->deleteGrid();
-	}
-	else if (visMethod == VIS_WRITE)
-	{
-		if (savedTexData)
-		{
-			resetTileAlpha(tile, savedTexData);
-			delete[] savedTexData;
-			savedTexData = 0;
-		}
-	}
+	if (tile->q)
+		tile->q->deleteGrid();
 #endif
 }
 
@@ -1245,19 +1143,12 @@ void WorldMapRender::onUpdate(float dt)
 			activeTile->markVisited(x0, y0, x1, y1);
 			if (activeQuad)
 			{
-				if (visMethod == VIS_VERTEX)
+				for (int x = x0; x <= x1; x++)
 				{
-					for (int x = x0; x <= x1; x++)
+					for (int y = y0; y <= y1; y++)
 					{
-						for (int y = y0; y <= y1; y++)
-						{
-							activeQuad->setDrawGridAlpha(x, y, visibleMapSegAlpha);
-						}
+						activeQuad->setDrawGridAlpha(x, y, visibleMapSegAlpha);
 					}
-				}
-				else if (visMethod == VIS_WRITE)
-				{
-					// Do nothing -- we regenerate the tile on opening the map.
 				}
 			}
 		}
@@ -1401,12 +1292,6 @@ void WorldMapRender::toggle(bool turnON)
 				scale = Vector(1.5,1.5);
 			else
 				scale = Vector(1,1);
-			if (visMethod == VIS_WRITE)
-			{
-				// Texture isn't updated while moving, so force an update here
-				clearVis(activeTile);
-				setVis(activeTile);
-			}
 		}
 
 		xMin = xMax = -internalOffset.x;

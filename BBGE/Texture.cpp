@@ -45,45 +45,6 @@ Texture::~Texture()
 	destroy();
 }
 
-void Texture::read(int tx, int ty, int w, int h, unsigned char *pixels)
-{
-	if (tx == 0 && ty == 0 && w == this->width && h == this->height && shadowData)
-	{
-		memcpy(pixels, shadowData, (size_t)w * h * 4);
-	}
-	else
-	{
-		std::ostringstream os;
-		os << "Unable to read a texture subimage (size = "
-		   << this->width << "x" << this->height << ", requested = "
-		   << tx << "," << ty << "+" << w << "x" << h << ")";
-		debugLog(os.str());
-	}
-}
-
-void Texture::write(int tx, int ty, int w, int h, const unsigned char *pixels)
-{
-	if (!sdlTexture || !shadowData)
-		return;
-
-	// Update the shadow copy first (read() serves from this - SDL's 2D
-	// renderer has no "read pixels back out of an arbitrary texture" call).
-	for (int row = 0; row < h; row++)
-	{
-		int destY = ty + row;
-		if (destY < 0 || destY >= height) continue;
-		memcpy(shadowData + ((size_t)destY * width + tx) * 4,
-			pixels + (size_t)row * w * 4,
-			(size_t)w * 4);
-	}
-
-	SDL_Rect rect;
-	rect.x = tx; rect.y = ty; rect.w = w; rect.h = h;
-	// pixels is already tightly-packed at stride w*4 (matches every call
-	// site), not the destination texture's full width*4.
-	SDL_UpdateTexture(sdlTexture, &rect, pixels, w * 4);
-}
-
 void Texture::unload()
 {
 	if (sdlTexture)
