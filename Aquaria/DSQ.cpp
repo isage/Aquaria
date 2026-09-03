@@ -4163,12 +4163,22 @@ void DSQ::onUpdate(float dt)
 	// signal WaterSurfaceRender's dependency on core->frameBuffer needs,
 	// since Core/BBGE can't reference Aquaria-layer types directly (see
 	// the detailed reasoning at Core::auxiliaryCaptureNeeded's
-	// declaration and at the render() capturing-decision site). Coarse
-	// and deliberately conservative - true whenever the user's
-	// frame-buffer-for-water setting is on AND the current scene has a
-	// water-surface-render object, regardless of whether it's precisely
-	// on-screen this exact frame.
-	core->auxiliaryCaptureNeeded = useFrameBuffer && game && game->waterSurfaceRender;
+	// declaration and at the render() capturing-decision site).
+	//
+	// Refined based on real perf.log data from an actual playtest: the
+	// original check (game && game->waterSurfaceRender) was true for
+	// essentially all of normal gameplay, since waterSurfaceRender is a
+	// singleton created once at Game init and never destroyed - it
+	// exists regardless of whether the current scene has any visible
+	// water surface, making the "smart" gate a near-total no-op outside
+	// the intro. WaterSurfaceRender::render() itself gates its actual
+	// work on game->waterLevel.x > 0 - when there's no water surface in
+	// the current scene, it sets its two child quads invisible and never
+	// even calls Quad::render(), meaning the captured frame genuinely
+	// isn't used. Mirroring that exact condition here is a precise,
+	// correct match for "is the capture actually needed for water right
+	// now" rather than "does this singleton object exist."
+	core->auxiliaryCaptureNeeded = useFrameBuffer && game && game->waterSurfaceRender && game->waterLevel.x > 0;
 
 	/*
 	if (hintTimer > 0)

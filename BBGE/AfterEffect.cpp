@@ -162,6 +162,28 @@ void AfterEffectManager::render()
 	SDL_Renderer *renderer = core->getRenderer();
 	if (!renderer) return;
 
+	// Step 3 of the performance optimization plan, closing a gap this
+	// exact subsystem's own gating logic opened: this function's whole
+	// job is "stop capturing, clear, draw the captured frame back
+	// through the current grid distortion" - but that's only valid if
+	// the main scene was actually captured *this* frame in the first
+	// place. Before the smart capture gate could actually reach its
+	// skip branch (only true once auxiliaryCaptureNeeded was refined to
+	// track real water visibility instead of an always-true singleton
+	// check), this path was unconditionally safe, since capture always
+	// happened - this exact case was simply never exercised by any real
+	// playtest until now. When capture was skipped, the render target
+	// here is still the real backbuffer (capturing never started, so
+	// there's nothing to "end"), and the scene was already drawn
+	// directly and correctly onto it - clearing to black and drawing
+	// back a stale, unrelated frameBuffer texture on top would destroy
+	// that already-correct result for no reason. Confirmed via real
+	// playtesting: this was exactly why the screen went black except
+	// the cursor (which renders on a separate, later layer, after this
+	// damage was already done).
+	if (SDL_GetRenderTarget(renderer) != core->frameBuffer.getTexture())
+		return;
+
 	RenderTransformStack xf = core->transform;
 	xf.translate(core->cameraPos.x, core->cameraPos.y, 0);
 	xf.scale(core->invGlobalScale, core->invGlobalScale, 1);
