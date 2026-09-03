@@ -25,6 +25,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include <fstream>
 #include <sstream>
 #include <limits>
+#include <set>
 
 namespace PerfLog
 {
@@ -47,6 +48,20 @@ static uint32_t s_captureSkipped = 0;
 static uint32_t s_captureEngaged = 0;
 static uint32_t s_batchSubmits = 0;
 static uint32_t s_batchFlushes = 0;
+
+// Distinct game-state names (StateManager::getTopStateData()->name)
+// observed during the current 120-frame window - requested directly
+// from real playtest feedback, since guessing which window corresponds
+// to which game state from draw-count patterns alone was ambiguous and
+// error-prone (e.g. the map screen's own draw count can vary widely
+// depending on how much has been explored, and a mid-window state
+// transition - intro to menu, cutscene to gameplay - previously had no
+// way to show up in the log at all). A std::set so multiple states
+// within one window (a transition happening mid-window) are captured
+// without duplicates, joined and printed on flush, then cleared for the
+// next window.
+static std::set<std::string> s_statesInWindow;
+
 static uint64_t s_frameStartTicks = 0;
 static uint64_t s_updateStartTicks = 0;
 static double s_lastUpdateMs = 0.0;
@@ -88,7 +103,8 @@ static void lazyInit()
 		s_out << "# frameTimeMs(min/avg/max) updateTimeMs(min/avg/max) "
 			"drawCalls(avg) stateChangesApplied(avg) stateChangesSkipped(avg) "
 			"renderTargetSwitches(avg) captureEngaged(avg)/captureSkipped(avg) "
-			"batchSubmits(avg)/batchFlushes(avg)\n";
+			"batchSubmits(avg)/batchFlushes(avg) "
+			"gameState(distinct names seen this window, '+'-joined if more than one)\n";
 		s_out.flush();
 	}
 }
@@ -122,9 +138,26 @@ static void flushWindow()
 		<< "captureEngaged=" << avgCaptureEngaged << "  "
 		<< "captureSkipped=" << avgCaptureSkipped << "  "
 		<< "batchSubmits=" << avgBatchSubmits << "  "
-		<< "batchFlushes=" << avgBatchFlushes;
+		<< "batchFlushes=" << avgBatchFlushes << "  "
+		<< "gameState=";
+	if (s_statesInWindow.empty())
+	{
+		os << "?"; // no state observed this window - shouldn't normally happen once the game has actually started, but never leave this column blank/malformed
+	}
+	else
+	{
+		bool first = true;
+		for (const std::string &name : s_statesInWindow)
+		{
+			if (!first) os << "+"; // '+' not ',' - keeps this one whitespace-free field, so simple split-on-whitespace log parsing (e.g. the same log-summarizing scripts already used against this exact log format) doesn't need updating to handle a comma-containing field
+			os << name;
+			first = false;
+		}
+	}
 
 	s_out << os.str() << std::endl; // flush every window - this is already throttled to WINDOW_SIZE frames, an explicit flush here is cheap and means a crash doesn't lose the last window's data
+
+	s_statesInWindow.clear();
 
 	s_framesInWindow = 0;
 	s_frameTimeMinMs = 0.0;
@@ -190,6 +223,19 @@ void endFrame()
 {
 	if (!s_enabled) return;
 	if (s_frameStartTicks == 0) return; // beginFrame() wasn't called (e.g. disabled mid-frame)
+
+	// Records the current game state's name for this window - see
+	// s_statesInWindow's declaration comment for why. core is a global,
+	// always valid by the time any frame is being timed; getTopStateData()
+	// can still be null very early (before any state has been pushed) or
+	// during shutdown, both real, expected cases, not a bug - silently
+	// skip rather than log an empty/misleading label in either case.
+	if (core)
+	{
+		StateData *topState = core->getTopStateData();
+		if (topState && !topState->name.empty())
+			s_statesInWindow.insert(topState->name);
+	}
 
 	uint64_t endTicks = SDL_GetPerformanceCounter();
 	uint64_t freq = SDL_GetPerformanceFrequency();

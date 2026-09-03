@@ -35,9 +35,12 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 // reset once per frame from Core::render()/showBuffer() and is not safe
 // to touch from any other thread.
 //
-// Usage: call PerfLog::beginFrame() once at the start of a frame (already
-// wired into Core::render()), PerfLog::endFrame() at the very end (wired
-// into Core::showBuffer()), and bump the relevant counter from wherever
+// Usage: call PerfLog::beginFrame() once at the start of a frame,
+// PerfLog::endFrame() at the very end - both already wired into
+// Core::main()'s own per-frame call, immediately around the
+// render()/showBuffer() pair (not inside either of those functions
+// themselves - correcting an earlier, inaccurate version of this
+// comment), and bump the relevant counter from wherever
 // the corresponding real work happens (see PerfLog::* below). Flushing to
 // disk is automatic and throttled internally - callers never need to
 // think about it.
@@ -46,9 +49,12 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 namespace PerfLog
 {
-	// Call once per frame, at the very start of Core::render() and the
-	// very end of Core::showBuffer() respectively. Anything in between
-	// counts as "this frame"'s CPU submission time.
+	// Call once per frame, immediately around Core::main()'s own
+	// render()/showBuffer() pair (see the detailed reasoning at that
+	// call site for why beginFrame() specifically starts there rather
+	// than inside Core::render() itself - render() can be called
+	// nested). Anything in between counts as "this frame"'s CPU
+	// submission time.
 	void beginFrame();
 	void endFrame();
 
