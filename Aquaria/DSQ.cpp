@@ -963,6 +963,55 @@ This build is not yet final, and as such there are a couple things lacking. They
 
 	this->setBaseTextureDirectory("gfx/");
 
+	// New this round: populate layerCategoryNames (see its declaration
+	// comment in Core.h) so PerfLog can report which broad category of
+	// content actually takes the draw calls - requested directly, to
+	// help explain the map screen's rising frame time and give a
+	// general per-scene breakdown (tiles/elements, entities, particles,
+	// etc.) rather than just one aggregate draws= number. Grouped into
+	// a small, readable set of categories rather than one per
+	// individual LR_* layer, so the resulting log column stays short.
+	{
+		auto cat = [this](int layer, const char *name) { layerCategoryNames[layer] = name; };
+
+		cat(LR_ZERO, "backdrop"); cat(LR_BACKDROP, "backdrop"); cat(LR_BACKGROUND, "backdrop");
+		cat(LR_SCENEBACKGROUNDIMAGE, "backdrop");
+		cat(LR_BACKDROP_ELEMENTS1, "backdrop"); cat(LR_BACKDROP_ELEMENTS2, "backdrop");
+		cat(LR_BACKDROP_ELEMENTS3, "backdrop"); cat(LR_BACKDROP_ELEMENTS4, "backdrop");
+		cat(LR_BACKDROP_ELEMENTS5, "backdrop"); cat(LR_BACKDROP_ELEMENTS6, "backdrop");
+
+		cat(LR_BACKGROUND_ELEMENTS1, "elements"); cat(LR_BACKGROUND_ELEMENTS2, "elements");
+		cat(LR_BACKGROUND_ELEMENTS3, "elements"); cat(LR_BLACKGROUND, "elements");
+		cat(LR_ELEMENTS1, "elements"); cat(LR_ELEMENTS2, "elements"); cat(LR_ELEMENTS3, "elements");
+		cat(LR_ELEMENTS4, "elements"); cat(LR_ELEMENTS5, "elements"); cat(LR_ELEMENTS6, "elements");
+		cat(LR_ELEMENTS7, "elements"); cat(LR_ELEMENTS8, "elements"); cat(LR_ELEMENTS9, "elements");
+		cat(LR_ELEMENTS10, "elements"); cat(LR_ELEMENTS11, "elements"); cat(LR_ELEMENTS12, "elements");
+		cat(LR_ELEMENTS13, "elements"); cat(LR_ELEMENTS14, "elements"); cat(LR_ELEMENTS15, "elements");
+		cat(LR_ELEMENTS16, "elements");
+		cat(LR_FOREGROUND_ELEMENTS1, "elements"); cat(LR_FOREGROUND_ELEMENTS2, "elements");
+
+		cat(LR_ENTITIES_MINUS4, "entities"); cat(LR_ENTITIES_MINUS3, "entities");
+		cat(LR_ENTITIES_MINUS2, "entities"); cat(LR_ENTITIES00, "entities");
+		cat(LR_ENTITIES0, "entities"); cat(LR_ENTITIES, "entities"); cat(LR_ENTITIES2, "entities");
+
+		cat(LR_WATERSURFACE, "water"); cat(LR_WATERSURFACE2, "water");
+		cat(LR_DARK_LAYER, "darklayer");
+
+		cat(LR_PROJECTILES, "particles"); cat(LR_LIGHTING, "particles");
+		cat(LR_PARTICLES, "particles"); cat(LR_PARTICLES2, "particles"); cat(LR_PARTICLES_TOP, "particles");
+
+		cat(LR_AFTER_EFFECTS, "effects"); cat(LR_SCENE_COLOR, "effects");
+
+		cat(LR_MENU, "ui"); cat(LR_MENU2, "ui"); cat(LR_HUD, "ui"); cat(LR_HUD2, "ui"); cat(LR_HUD3, "ui");
+		cat(LR_HUDUNDERLAY, "ui"); cat(LR_MINIMAP, "ui"); cat(LR_RECIPES, "ui");
+		cat(LR_REGISTER_TEXT, "ui"); cat(LR_DAMAGESPRITE, "ui"); cat(LR_HELP, "ui");
+		cat(LR_FILEMENU, "ui"); cat(LR_CONFIRM, "ui"); cat(LR_CURSOR, "ui"); cat(LR_SUBTITLES, "ui");
+		cat(LR_PROGRESS, "ui"); cat(LR_DEBUG_TEXT, "ui"); cat(LR_BLACKBARS, "ui");
+
+		cat(LR_WORLDMAP, "map"); cat(LR_WORLDMAPHUD, "map");
+		cat(LR_TRANSITION, "transition"); cat(LR_OVERLAY, "transition");
+	}
+
 	//sound->setMusicVolume(0);
 
 //	PHYSFS_addToSearchPath("gfx",1);
@@ -4179,6 +4228,19 @@ void DSQ::onUpdate(float dt)
 	// correct match for "is the capture actually needed for water right
 	// now" rather than "does this singleton object exist."
 	core->auxiliaryCaptureNeeded = useFrameBuffer && game && game->waterSurfaceRender && game->waterLevel.x > 0;
+
+	// gameState= perf-log labeling: sync gameSubModeSuffix (see
+	// Core::gameSubModeSuffix's declaration comment for the full
+	// reasoning) - cutscene checked before map, since a cutscene could
+	// in principle run while the map happens to still be toggled on,
+	// and the more specific, rarer state (cutscene) is more useful to
+	// see in a log than the more general one.
+	if (isInCutscene())
+		core->gameSubModeSuffix = ":cutscene";
+	else if (game && game->worldMapRender && game->worldMapRender->isOn())
+		core->gameSubModeSuffix = ":map";
+	else
+		core->gameSubModeSuffix = "";
 
 	/*
 	if (hintTimer > 0)

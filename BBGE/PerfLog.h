@@ -95,6 +95,40 @@ namespace PerfLog
 	void countBatchSubmit();
 	void countBatchFlush();
 
+	// New this round: object-count visibility, requested to help
+	// explain the map screen's frame-time ramp (does it correlate with
+	// rising object count over time, or something else?) and to give a
+	// general sense of culling effectiveness. Mirrors
+	// Core::totalRenderObjectCount/renderObjectCount/
+	// processedRenderObjectCount exactly (already existed internally
+	// for the culling logic itself, just never exposed here) - call
+	// once per frame with Core's own post-render() values, not
+	// incremented from multiple call sites like the counters above.
+	void recordObjectCounts(unsigned int total, unsigned int processed, unsigned int rendered);
+
+	// New this round: isolates SDL_RenderPresent()'s own cost from the
+	// rest of the frame - added specifically to test whether the
+	// previously-reported, still-unexplained ~11-12ms gameplay-floor
+	// gap (real, low draw counts, low update time, yet total frame time
+	// far exceeds both) is vsync/present-related or something else in
+	// the pipeline. Call beginPresent() immediately before
+	// SDL_RenderPresent() and endPresent() immediately after, in
+	// Core::showBuffer().
+	void beginPresent();
+	void endPresent();
+
+	// New this round: per-layer-category draw-call breakdown, directly
+	// answering "what's actually taking the draw calls - tiles,
+	// entities, particles, which layer" as requested. Call
+	// setLayerCategory() once per layer at the start of Core::render()'s
+	// layer walk (before that layer's objects are processed) - every
+	// countDrawCall() that follows is attributed to whatever category
+	// was set most recently, until the next setLayerCategory() call.
+	// Categories are freely-chosen short strings (see Core::render()'s
+	// call sites for the actual set used) rather than an enum, so new
+	// layers/categories don't need a PerfLog.h change to be tracked.
+	void setLayerCategory(const char *category);
+
 	// Enable/disable at runtime (defaults to on) - useful for isolating
 	// a specific test run without a rebuild.
 	void setEnabled(bool enabled);

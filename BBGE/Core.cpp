@@ -403,6 +403,7 @@ Core::Core(const std::string &filesystem, const std::string& extraDataDir, int n
 
 	virtualOffX = virtualOffY = 0;
 	auxiliaryCaptureNeeded = false;
+	gameSubModeSuffix = "";
 	vw2 = 0;
 	vh2 = 0;
 
@@ -2308,6 +2309,17 @@ void Core::render(int startLayer, int endLayer, bool useFrameBufferIfAvail, bool
 		if (i == -1) continue;
 		if ((startLayer != -1 && endLayer != -1) && (i < startLayer || i > endLayer)) continue;
 
+		// New this round: attribute this layer's draw calls to whatever
+		// category Aquaria registered for it in layerCategoryNames (see
+		// that field's declaration comment) - a layer with no entry
+		// (map not populated, or genuinely uncategorized) safely leaves
+		// PerfLog's layerDraws= column without an entry for it, not a
+		// crash or a guess.
+		{
+			std::map<int, std::string>::iterator catIt = layerCategoryNames.find(i);
+			PerfLog::setLayerCategory(catIt != layerCategoryNames.end() ? catIt->second.c_str() : "");
+		}
+
 		if (i == postProcessingFx.layer)
 		{
 			postProcessingFx.preRender();
@@ -2398,6 +2410,13 @@ void Core::render(int startLayer, int endLayer, bool useFrameBufferIfAvail, bool
 		}
 	}
 
+	// New this round: object-count visibility, requested to help
+	// explain the map screen's frame-time ramp and give a general sense
+	// of culling effectiveness - see PerfLog::recordObjectCounts()'s
+	// declaration comment. By this point in render(), the layer walk
+	// has fully completed, so these are this frame's final counts.
+	PerfLog::recordObjectCounts(totalRenderObjectCount, processedRenderObjectCount, renderObjectCount);
+
 	// Step 6 of the performance optimization plan: THE critical missing
 	// piece, found via real playtesting after extensive diagnostic work
 	// confirmed everything upstream (alpha, effectiveAlpha, geometry,
@@ -2423,7 +2442,11 @@ void Core::showBuffer()
 {
 	BBGE_PROF(Core_showBuffer);
 	if (gRenderer)
+	{
+		PerfLog::beginPresent();
 		SDL_RenderPresent(gRenderer);
+		PerfLog::endPresent();
+	}
 }
 
 SDL_Renderer *Core::getRenderer()

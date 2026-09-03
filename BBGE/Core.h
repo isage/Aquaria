@@ -30,6 +30,7 @@ BUILD_LINUX
 */
 
 #include "Base.h"
+#include <map>
 #include "RenderObject.h"
 #include "SoundManager.h"
 #include "ActionMapper.h"
@@ -707,6 +708,45 @@ public:
 	// far more here than precision, given this exact subsystem's history
 	// of regressions in this project.
 	bool auxiliaryCaptureNeeded;
+
+	// gameState= perf-log labeling: another Aquaria-layer signal
+	// Core/BBGE can't compute directly (worldMapRender->isOn(),
+	// DSQ::isInCutscene()) - synced every frame from DSQ::onUpdate(),
+	// same pattern as auxiliaryCaptureNeeded just above. PerfLog reads
+	// this to distinguish gameplay/cutscene/map-screen, which otherwise
+	// all share one single StateManager state ("Game") with no way to
+	// tell them apart from the state name alone - confirmed a real,
+	// reported gap via an actual playtest log where every one of those
+	// three showed up as an indistinguishable "gameState=game". Empty
+	// string outside the "Game" state or in ordinary gameplay within
+	// it; ":cutscene" or ":map" otherwise, appended directly to the
+	// state name so it reads as e.g. "game:cutscene" - a single field,
+	// not two, so nothing about the existing log format or any
+	// split-on-whitespace parsing of it needs to change.
+	std::string gameSubModeSuffix;
+
+	// New this round: per-layer-category draw-call breakdown for
+	// PerfLog's layerDraws= column, directly answering "what's taking
+	// the draw calls - tiles, entities, particles, which layer" as
+	// requested. Core/BBGE can't see the real LR_* layer names
+	// (Aquaria-layer, DSQ.h) - same cross-layer constraint as
+	// gameSubModeSuffix/auxiliaryCaptureNeeded above - so rather than
+	// hard-coding numeric LR_* ranges here (fragile: silently wrong the
+	// moment that enum is reordered or extended, with no compiler
+	// warning), this is a generic, empty-by-default lookup Aquaria
+	// populates once, early (see DSQ::init() or similar), mapping each
+	// layer index to a short, readable category name ("entities",
+	// "particles", "elements", "map", "ui", etc. - deliberately broader
+	// than one category per individual LR_* value, so the resulting log
+	// column stays short and readable rather than one line per layer).
+	// Core::render()'s layer walk looks up each layer's category here
+	// as it processes it; a layer with no entry (map never populated,
+	// or a genuinely new/uncategorized layer) is safe to leave
+	// unlabeled - PerfLog::setLayerCategory() accepts an empty string,
+	// which simply means "don't attribute this layer's draws to any
+	// category" rather than crashing or guessing.
+	std::map<int, std::string> layerCategoryNames;
+
 	int flipMouseButtons;
 	void initFrameBuffer();
 	FrameBuffer frameBuffer;
