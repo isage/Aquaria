@@ -10577,6 +10577,36 @@ void Game::loadElementTemplates(std::string pack)
 {
 
     stringToLower(pack);
+
+	// Step 5 of the texture atlas plan: register this map's tileset
+	// atlas before any Element/tile textures get requested below (or
+	// later, as Elements are created during scene load) - this is the
+	// single hook point for map load, since loadElementTemplates() is
+	// always called with the exact tileset name (every call site already
+	// passes it, whether from the primary tileset="..." XML attribute or
+	// the legacy elementTemplatePack="..." one), matching what
+	// tools/make_tileset.py names its output files after. Deliberately
+	// tolerant of failure - if no atlas exists for this tileset (not
+	// every tileset necessarily has one generated), TextureAtlas::load()
+	// returns an empty CountedPtr and every texture falls through to the
+	// normal, pre-atlas per-file loading path exactly as before this
+	// plan existed. No error handling needed here beyond that fallback.
+	//
+	// Unloads the *previous* atlas first, but only when actually
+	// switching to a different one - same-tileset transitions (e.g.
+	// moving between two rooms sharing one tileset) correctly skip both
+	// the unload and the reload, matching TextureAtlas::load()'s own
+	// "already loaded, return existing" fast path. Unloading here drops
+	// only the registry's own reference - if the previous scene's
+	// Elements/tiles haven't been destroyed yet (refcounting handles
+	// that independently, whenever it actually happens), the atlas
+	// itself safely survives until they are, per TextureAtlas's own
+	// lifetime design (verified in step 3's standalone lifetime test).
+	if (!lastLoadedAtlasName.empty() && lastLoadedAtlasName != pack)
+		TextureAtlas::unload(lastLoadedAtlasName);
+	TextureAtlas::load(pack);
+	lastLoadedAtlasName = pack;
+
 	/*
 	std::string fn = ("data/"+pack+".xml");
 	if (!exists(fn))

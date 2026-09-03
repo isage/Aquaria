@@ -1121,6 +1121,15 @@ protected:
 	void updateCurrentVisuals(float dt);
 	std::string lastTileset;
 
+	// Step 5 of the texture atlas plan: tracks the bare tileset/atlas
+	// name (not the full path lastTileset above holds) currently
+	// registered via TextureAtlas::load(), so loadElementTemplates() can
+	// unload the previous atlas when switching to a genuinely different
+	// one - kept deliberately separate from lastTileset rather than
+	// reusing it, to avoid any risk of altering that member's existing
+	// doPrecache-related semantics.
+	std::string lastLoadedAtlasName;
+
 
 	void createLi();
 	void createPets();

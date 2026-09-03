@@ -962,6 +962,7 @@ This build is not yet final, and as such there are a couple things lacking. They
 	//packReadInfo("mus.dat");
 
 	this->setBaseTextureDirectory("gfx/");
+
 	//sound->setMusicVolume(0);
 
 //	PHYSFS_addToSearchPath("gfx",1);

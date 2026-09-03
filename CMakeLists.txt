@@ -414,6 +414,7 @@ SET(BBGE_SRCS
     ${BBGEDIR}/StateManager.cpp
     ${BBGEDIR}/Strings.cpp
     ${BBGEDIR}/Texture.cpp
+    ${BBGEDIR}/TextureAtlas.cpp
     ${BBGEDIR}/ImageLoader.cpp
     ${BBGEDIR}/TTFFont.cpp
     ${BBGEDIR}/Vector.cpp

@@ -2624,6 +2624,25 @@ std::pair<CountedPtr<Texture>, TextureLoadResult> Core::doTextureAdd(const std::
 	if (t)
 		return std::make_pair(t, TEX_SUCCESS);
 
+	// Step 3 of the texture atlas plan: check the global atlas registry
+	// before falling back to a separate disk load. This is the single
+	// hook point for the whole engine - every texture load (tiles,
+	// elements, sprites, UI) already funnels through here, so nothing
+	// else needs to change to benefit once a map's atlas is loaded
+	// (step 5 wires up map load/unload to actually populate the
+	// registry; until then this check simply always misses, identical
+	// to today's behavior).
+	{
+		CountedPtr<TextureAtlas> atlas;
+		AtlasEntry entry;
+		if (TextureAtlas::lookup(internalTextureName, &atlas, &entry))
+		{
+			t = new Texture;
+			t->initFromAtlas(atlas, entry);
+			return std::make_pair(t, (TextureLoadResult)(TEX_LOADED | TEX_SUCCESS));
+		}
+	}
+
 	t = new Texture;
 	t->name = internalTextureName;
 	unsigned res = TEX_FAILED;

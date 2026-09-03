@@ -335,13 +335,35 @@ void Emitter::onRender()
 					c3 = core->transform.transformPoint(x-dx, y-dy);
 				}
 
+				// Step 4 of the texture atlas plan: composeUV() maps
+				// these raw, full-image (0,1)/(1,1)/(1,0)/(0,0) corners
+				// into the correct sub-region when texture is atlas-
+				// backed - an identity transform otherwise, so always
+				// safe to call. Missed in the original Step 4 pass,
+				// which only covered Quad::onRender()'s base case -
+				// this direct SDL_Vertex construction is a separate
+				// code path that bypassed it entirely, causing an
+				// atlas-backed particle texture to sample the whole
+				// shared atlas image instead of its own sub-region
+				// (confirmed via real playtesting).
+				float ulU, ulV, lrU, lrV;
+				if (texture)
+				{
+					texture->composeUV(0.0f, 1.0f, &ulU, &ulV);
+					texture->composeUV(1.0f, 0.0f, &lrU, &lrV);
+				}
+				else
+				{
+					ulU = 0.0f; ulV = 1.0f; lrU = 1.0f; lrV = 0.0f;
+				}
+
 				int base = (int)verts.size();
 				SDL_Vertex v;
 				v.color = sdlCol;
-				v.position={c0.x,c0.y}; v.tex_coord={0,1}; verts.push_back(v);
-				v.position={c1.x,c1.y}; v.tex_coord={1,1}; verts.push_back(v);
-				v.position={c2.x,c2.y}; v.tex_coord={1,0}; verts.push_back(v);
-				v.position={c3.x,c3.y}; v.tex_coord={0,0}; verts.push_back(v);
+				v.position={c0.x,c0.y}; v.tex_coord={ulU,ulV}; verts.push_back(v);
+				v.position={c1.x,c1.y}; v.tex_coord={lrU,ulV}; verts.push_back(v);
+				v.position={c2.x,c2.y}; v.tex_coord={lrU,lrV}; verts.push_back(v);
+				v.position={c3.x,c3.y}; v.tex_coord={ulU,lrV}; verts.push_back(v);
 				indices.push_back(base+0); indices.push_back(base+1); indices.push_back(base+2);
 				indices.push_back(base+0); indices.push_back(base+2); indices.push_back(base+3);
 			}
@@ -382,13 +404,35 @@ void Emitter::onRender()
 				glm::vec3 c2 = core->transform.transformPoint(x+dx, y-dy);
 				glm::vec3 c3 = core->transform.transformPoint(x-dx, y-dy);
 
+				// Step 4 of the texture atlas plan: composeUV() maps
+				// these raw, full-image (0,1)/(1,1)/(1,0)/(0,0) corners
+				// into the correct sub-region when texture is atlas-
+				// backed - an identity transform otherwise, so always
+				// safe to call. Missed in the original Step 4 pass,
+				// which only covered Quad::onRender()'s base case -
+				// this direct SDL_Vertex construction is a separate
+				// code path that bypassed it entirely, causing an
+				// atlas-backed particle texture to sample the whole
+				// shared atlas image instead of its own sub-region
+				// (confirmed via real playtesting).
+				float ulU, ulV, lrU, lrV;
+				if (texture)
+				{
+					texture->composeUV(0.0f, 1.0f, &ulU, &ulV);
+					texture->composeUV(1.0f, 0.0f, &lrU, &lrV);
+				}
+				else
+				{
+					ulU = 0.0f; ulV = 1.0f; lrU = 1.0f; lrV = 0.0f;
+				}
+
 				int base = (int)verts.size();
 				SDL_Vertex v;
 				v.color = sdlCol;
-				v.position={c0.x,c0.y}; v.tex_coord={0,1}; verts.push_back(v);
-				v.position={c1.x,c1.y}; v.tex_coord={1,1}; verts.push_back(v);
-				v.position={c2.x,c2.y}; v.tex_coord={1,0}; verts.push_back(v);
-				v.position={c3.x,c3.y}; v.tex_coord={0,0}; verts.push_back(v);
+				v.position={c0.x,c0.y}; v.tex_coord={ulU,ulV}; verts.push_back(v);
+				v.position={c1.x,c1.y}; v.tex_coord={lrU,ulV}; verts.push_back(v);
+				v.position={c2.x,c2.y}; v.tex_coord={lrU,lrV}; verts.push_back(v);
+				v.position={c3.x,c3.y}; v.tex_coord={ulU,lrV}; verts.push_back(v);
 				indices.push_back(base+0); indices.push_back(base+1); indices.push_back(base+2);
 				indices.push_back(base+0); indices.push_back(base+2); indices.push_back(base+3);
 			}

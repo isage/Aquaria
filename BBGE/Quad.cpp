@@ -437,20 +437,44 @@ void Quad::renderGrid()
 				glm::vec3 p11 = core->transform.transformPoint(w*drawGrid[i+1][j+1].x, h*drawGrid[i+1][j+1].y);
 				glm::vec3 p10 = core->transform.transformPoint(w*drawGrid[i+1][j].x,   h*drawGrid[i+1][j].y);
 
+				// Step 4 of the texture atlas plan (belatedly extended
+				// here): composeUV() maps this cell's raw, per-object-
+				// normalized u0/u1/v0/v1 into the correct atlas sub-
+				// region - identity transform otherwise, always safe to
+				// call. This grid-deformation path (the "wobbly overlay"
+				// distortion effect) was missed by the original Step 4
+				// pass, which only covered the plain base-case quad -
+				// confirmed via real playtesting that an atlas-backed
+				// grid-rendered object samples the whole shared atlas
+				// image instead of its own sub-region without this.
+				float cu0, cu1, cv0, cv1;
+				if (texture && !textureOverride)
+				{
+					float dummy;
+					texture->composeUV(u0, 0.0f, &cu0, &dummy);
+					texture->composeUV(u1, 0.0f, &cu1, &dummy);
+					texture->composeUV(0.0f, v0, &dummy, &cv0);
+					texture->composeUV(0.0f, v1, &dummy, &cv1);
+				}
+				else
+				{
+					cu0 = u0; cu1 = u1; cv0 = v0; cv1 = v1;
+				}
+
 				int base = (int)verts.size();
 				SDL_Vertex v;
 
 				v.color = {red, green, blue, alphaVal*drawGrid[i][j].z};
-				v.position = {p00.x, p00.y}; v.tex_coord = {u0, v0}; verts.push_back(v);
+				v.position = {p00.x, p00.y}; v.tex_coord = {cu0, cv0}; verts.push_back(v);
 
 				v.color = {red, green, blue, alphaVal*drawGrid[i][j+1].z};
-				v.position = {p01.x, p01.y}; v.tex_coord = {u0, v1}; verts.push_back(v);
+				v.position = {p01.x, p01.y}; v.tex_coord = {cu0, cv1}; verts.push_back(v);
 
 				v.color = {red, green, blue, alphaVal*drawGrid[i+1][j+1].z};
-				v.position = {p11.x, p11.y}; v.tex_coord = {u1, v1}; verts.push_back(v);
+				v.position = {p11.x, p11.y}; v.tex_coord = {cu1, cv1}; verts.push_back(v);
 
 				v.color = {red, green, blue, alphaVal*drawGrid[i+1][j].z};
-				v.position = {p10.x, p10.y}; v.tex_coord = {u1, v0}; verts.push_back(v);
+				v.position = {p10.x, p10.y}; v.tex_coord = {cu1, cv0}; verts.push_back(v);
 
 				indices.push_back(base+0); indices.push_back(base+1); indices.push_back(base+2);
 				indices.push_back(base+0); indices.push_back(base+2); indices.push_back(base+3);
@@ -472,6 +496,27 @@ void Quad::renderGrid()
 
 void Quad::repeatTextureToFill(bool on)
 {
+	// Step 4 of the texture atlas plan (extended for a real, reported
+	// bug): repeat/tile-to-fill relies on UV values outside [0,1],
+	// which composeUV() was never designed to handle - SDL's texture
+	// wrap addressing applies to a whole texture, not a sub-rectangle
+	// within a shared atlas image, so there's no correct way to make
+	// repeating work for an atlas-backed sub-region. The only fix is to
+	// stop sharing the atlas for this specific texture before enabling
+	// repeat - confirmed necessary via real playtesting (a repeating
+	// background Element rendered as a garbled rectangle sampling
+	// arbitrary parts of its atlas). A no-op if this texture isn't
+	// currently atlas-backed, so every non-atlas repeat-to-fill user is
+	// completely unaffected. Known limitation, not currently hit by any
+	// call site in this codebase (checked): if setTexture() is called
+	// again *after* repeatTextureToFill(true), the newly-set texture
+	// isn't automatically reconverted, since repeatingTextureToFill is
+	// a Quad-level member RenderObject::setTexture() can't see. Every
+	// existing repeat-to-fill call site sets the texture first, then
+	// enables repeat, matching what this fix handles.
+	if (on && texture)
+		texture->convertToStandaloneLoad();
+
 	repeatingTextureToFill = on;
 	repeatTexture = on;
 	refreshRepeatTextureToFill();
@@ -507,10 +552,29 @@ void Quad::onRender()
 				glm::vec3 top = core->transform.transformPoint(strip[i].x*width-_w2, strip[i].y*_h2*10 - _h2);
 				glm::vec3 bot = core->transform.transformPoint(strip[i].x*width-_w2, strip[i].y*_h2*10 + _h2);
 
+				// Step 4 of the texture atlas plan (belatedly extended
+				// here, alongside renderGrid()): composeUV() maps this
+				// segment's raw, per-object-normalized U (and the fixed
+				// V=0/V=1 span) into the correct atlas sub-region -
+				// identity transform otherwise, always safe to call.
+				// This strip-rendering path was missed by the original
+				// Step 4 pass for the same reason renderGrid() was.
+				float su, stopV, sbotV;
+				if (texture && !textureOverride)
+				{
+					float dummy;
+					texture->composeUV(texBits*(float)i, 0.0f, &su, &stopV);
+					texture->composeUV(0.0f, 1.0f, &dummy, &sbotV);
+				}
+				else
+				{
+					su = texBits*(float)i; stopV = 0.0f; sbotV = 1.0f;
+				}
+
 				SDL_Vertex v;
 				v.color = col;
-				v.position = {top.x, top.y}; v.tex_coord = {texBits*(float)i, 0}; verts.push_back(v);
-				v.position = {bot.x, bot.y}; v.tex_coord = {texBits*(float)i, 1}; verts.push_back(v);
+				v.position = {top.x, top.y}; v.tex_coord = {su, stopV}; verts.push_back(v);
+				v.position = {bot.x, bot.y}; v.tex_coord = {su, sbotV}; verts.push_back(v);
 			}
 
 			static std::vector<int> indices;
@@ -559,6 +623,23 @@ void Quad::onRender()
 				glm::vec3 wp2 = core->transform.transformPoint(+_w2, -_h2);
 				glm::vec3 wp3 = core->transform.transformPoint(-_w2, -_h2);
 
+				// Step 4 of the texture atlas plan: composeUV() maps this
+				// object's own, normalized (0-1) UV coordinates into the
+				// shared atlas's own pixel space when texture is atlas-
+				// backed - an identity transform (u,v unchanged) for an
+				// ordinary, non-atlas texture, so this is always safe to
+				// call. textureOverride bypasses the Texture object
+				// entirely (a raw SDL_Texture injection, e.g. for render-
+				// to-texture effects) - there's no Texture to query in
+				// that case, so those UVs pass through raw, matching
+				// this code's behavior before atlas support existed.
+				float ulX = upperLeftTextureCoordinates.x, ulY = upperLeftTextureCoordinates.y;
+				float lrX = lowerRightTextureCoordinates.x, lrY = lowerRightTextureCoordinates.y;
+				if (texture && !textureOverride)
+				{
+					texture->composeUV(upperLeftTextureCoordinates.x, upperLeftTextureCoordinates.y, &ulX, &ulY);
+					texture->composeUV(lowerRightTextureCoordinates.x, lowerRightTextureCoordinates.y, &lrX, &lrY);
+				}
 
 				// wp0/wp1 are the BOTTOM screen vertices (+_h2, Y-down),
 				// wp2/wp3 are the TOP screen vertices (-_h2). With V=0 at
@@ -575,20 +656,20 @@ void Quad::onRender()
                 // sub-region UV, e.g. a packed sprite-sheet frame.
 				SDL_Vertex verts[4];
 				verts[0].position.x = wp0.x; verts[0].position.y = wp0.y;
-				verts[0].tex_coord.x = upperLeftTextureCoordinates.x;
-				verts[0].tex_coord.y = lowerRightTextureCoordinates.y;
+				verts[0].tex_coord.x = ulX;
+				verts[0].tex_coord.y = lrY;
 
 				verts[1].position.x = wp1.x; verts[1].position.y = wp1.y;
-				verts[1].tex_coord.x = lowerRightTextureCoordinates.x;
-				verts[1].tex_coord.y = lowerRightTextureCoordinates.y;
+				verts[1].tex_coord.x = lrX;
+				verts[1].tex_coord.y = lrY;
 
 				verts[2].position.x = wp2.x; verts[2].position.y = wp2.y;
-				verts[2].tex_coord.x = lowerRightTextureCoordinates.x;
-				verts[2].tex_coord.y = upperLeftTextureCoordinates.y;
+				verts[2].tex_coord.x = lrX;
+				verts[2].tex_coord.y = ulY;
 
 				verts[3].position.x = wp3.x; verts[3].position.y = wp3.y;
-				verts[3].tex_coord.x = upperLeftTextureCoordinates.x;
-				verts[3].tex_coord.y = upperLeftTextureCoordinates.y;
+				verts[3].tex_coord.x = ulX;
+				verts[3].tex_coord.y = ulY;
 
 				verts[0].color = verts[1].color = verts[2].color = verts[3].color = col;
 

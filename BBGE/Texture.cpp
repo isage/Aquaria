@@ -38,6 +38,95 @@ Texture::Texture()
 	repeat = false;
 	repeating = false;
 	ow = oh = -1;
+
+	// Texture atlas support - step 3 of the texture atlas plan. Default
+	// state is "not atlas-backed" - ownsTexture=true matches every
+	// existing texture's behavior unchanged (this object owns and must
+	// destroy its own sdlTexture). initFromAtlas() is the only thing
+	// that ever sets ownsTexture=false.
+	ownsTexture = true;
+	atlasX = atlasY = 0;
+}
+
+void Texture::initFromAtlas(const CountedPtr<TextureAtlas> &atlas, const AtlasEntry &entry)
+{
+	sdlTexture = atlas->sdlTexture;
+	ownsTexture = false;
+	sourceAtlas = atlas; // increfs - this Texture now shares ownership, keeping the atlas alive at least as long as this object exists
+
+	atlasX = entry.x;
+	atlasY = entry.y;
+	width = entry.w;
+	height = entry.h;
+
+	name = entry.name;
+
+	// Copies this sub-region's own pixels out of the atlas's retained
+	// full-image buffer into this Texture's own shadowData - see
+	// TextureAtlas.h's atlasShadowData comment for why this exists (it
+	// keeps getBufferAndSize()/collision detection working unchanged for
+	// atlas-backed textures, without any change to that code, until the
+	// plan's step 7 collision tool replaces this mechanism). This is a
+	// real, deliberate row-by-row copy (the sub-region isn't contiguous
+	// within the atlas's full buffer - source stride is the *atlas's*
+	// width, destination stride is this sub-region's own, tighter
+	// width), verified against a standalone test before being trusted
+	// here - see texture_atlas_subregion_test.cpp.
+	if (atlas->atlasShadowData && width > 0 && height > 0)
+	{
+		shadowData = (unsigned char*)malloc((size_t)width * height * 4);
+		if (shadowData)
+		{
+			const int atlasStride = atlas->width * 4;
+			const int rowBytes = width * 4;
+			for (int row = 0; row < height; row++)
+			{
+				const unsigned char *src = atlas->atlasShadowData + (size_t)(atlasY + row) * atlasStride + (size_t)atlasX * 4;
+				unsigned char *dst = shadowData + (size_t)row * rowBytes;
+				memcpy(dst, src, rowBytes);
+			}
+		}
+	}
+}
+
+void Texture::composeUV(float u, float v, float *outU, float *outV) const
+{
+	if (sourceAtlas && sourceAtlas->width > 0 && sourceAtlas->height > 0)
+	{
+		// Maps a coordinate normalized against THIS texture's own
+		// width/height into the shared atlas's own pixel space -
+		// verified against a standalone test (see
+		// texture_atlas_uv_composition_test.cpp) before being trusted
+		// here, since a wrong-looking sprite from a stride/offset
+		// mistake here would be a silent visual bug, not a crash.
+		*outU = (atlasX + u * width) / (float)sourceAtlas->width;
+		*outV = (atlasY + v * height) / (float)sourceAtlas->height;
+	}
+	else
+	{
+		*outU = u;
+		*outV = v;
+	}
+}
+
+void Texture::convertToStandaloneLoad()
+{
+	if (!sourceAtlas)
+		return; // already standalone - no-op, matching the header comment
+
+	// Same pattern reload() already uses (unload() then load()), except
+	// loadName needs computing first - it was never set for this
+	// texture, since initFromAtlas() (how it got here) never calls
+	// load() at all. core->getTextureLoadName() is the exact same
+	// resolution Core::doTextureAdd() itself uses for every normal,
+	// non-atlas load, so this reproduces precisely the load this
+	// texture name would have gotten if it had never been atlas-backed
+	// in the first place.
+	std::string standaloneLoadName = core->getTextureLoadName(name);
+
+	unload(); // releases sourceAtlas correctly (doesn't touch the shared sdlTexture, since ownsTexture is still false at this point)
+	ownsTexture = true;
+	load(standaloneLoadName);
 }
 
 Texture::~Texture()
@@ -57,9 +146,26 @@ void Texture::unload()
 			debugLog("UNLOADING TEXTURE: " + name);
 		}
 
-		SDL_DestroyTexture(sdlTexture);
+		// Step 3 of the texture atlas plan: only destroy the SDL texture
+		// if this object actually owns it. An atlas-backed Texture's
+		// sdlTexture is shared with every other Texture backed by the
+		// same atlas - destroying it here would be a use-after-free for
+		// all of them the moment any single one of them unloads. The
+		// atlas itself (via sourceAtlas going out of scope below) is the
+		// only thing that ever destroys the shared SDL texture, and only
+		// once nothing references it anymore.
+		if (ownsTexture)
+			SDL_DestroyTexture(sdlTexture);
 		sdlTexture = 0;
 	}
+	// Releases this Texture's share of atlas ownership regardless of
+	// ownsTexture - a no-op (empty CountedPtr assigned to empty) for
+	// ordinary, non-atlas-backed textures. Explicit here rather than
+	// relying solely on ~Texture() to do this via the member's own
+	// destructor, since reload() calls unload() without destroying the
+	// Texture object itself - see reload()'s comment for the resulting,
+	// deliberately-accepted edge case.
+	sourceAtlas = CountedPtr<TextureAtlas>();
 	if (shadowData)
 	{
 		free(shadowData);
@@ -132,6 +238,16 @@ void Texture::reload()
 {
 	debugLog("RELOADING TEXTURE: " + name + " with loadName " + loadName + "...");
 
+	// Edge case, deliberately accepted rather than fixed here: if this
+	// Texture was atlas-backed, unload() correctly releases the atlas
+	// reference, but load(loadName) below only knows how to load a
+	// separate file from disk - it has no atlas awareness. An
+	// atlas-backed texture that gets reload()'d falls back to loading as
+	// a standalone file rather than re-resolving through the atlas
+	// lookup. reload() is a dev/debug-oriented hot-reload path, not
+	// something normal gameplay hits, so this is a minor, documented
+	// behavioral gap rather than a correctness bug worth expanding this
+	// step's scope for.
 	unload();
 	load(loadName);
 
