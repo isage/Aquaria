@@ -73,18 +73,48 @@ inline void drawTexturedQuad(SDL_Renderer *renderer, SDL_Texture *tex,
 		RenderState::setTextureBlendMode(tex, blend);
 	else
 		RenderState::setRenderDrawBlendMode(renderer, blend);
-	DrawBatch::flush(); // Step 6: not routed through DrawBatch - must flush first to preserve draw order
-	SDL_RenderGeometry(renderer, tex, v, 4, idx, 6);
-	PerfLog::countDrawCall();
+	// Routed through DrawBatch instead of a forced flush + direct
+	// SDL_RenderGeometry() call - this helper is shared by ~13 different
+	// bespoke renderers (see the comment above), several of which draw
+	// many consecutive, same-texture quads in a tight loop (MiniMapRender
+	// in particular: one call per visible tile cell, often sharing the
+	// same water/land texture across many consecutive cells) - every one
+	// of those was getting a forced, unbatched flush per call until now,
+	// confirmed as a real, measured bottleneck via a real playtest's
+	// layerDraws= breakdown showing far more UI-category draws during
+	// the map screen than the actual map-tile-overlay logic accounts
+	// for. DrawBatch::submit() already handles the non-atlas-backed
+	// identity case safely (verified in Step 6), so this is a pure
+	// batching win with no behavior change for callers passing a
+	// standalone, non-atlas texture.
+	DrawBatch::submit(renderer, tex, blend, v, 4, idx, 6);
+	PerfLog::countBatchSubmit();
 }
 
 // Convenience overload for the common "quad centered at (cx,cy), texture's
 // own texture pointer, full [0,1] UV range" case.
-inline void drawTexturedQuad(SDL_Renderer *renderer, Texture *texture,
+inline void drawTexturedQuad(SDL_Renderer *renderer, const Texture *texture,
 	float cx, float cy, float hw, float hh,
 	float r, float g, float b, float a, SDL_BlendMode blend)
 {
-	drawTexturedQuad(renderer, texture ? texture->sdlTexture : 0, cx, cy, hw, hh, r, g, b, a, blend);
+	// Composes through the texture's own composeUV() (identity transform
+	// for a non-atlas-backed texture, correct sub-region mapping
+	// otherwise) rather than passing the raw [0,1] default straight
+	// through - closing the same class of bug proactively here that
+	// previously had to be found and fixed three separate times
+	// (Emitter.cpp, Quad::renderGrid(), Quad's strip-rendering mode)
+	// after already shipping and being reported as a real, visible
+	// regression each time. None of this helper's current callers
+	// happen to use an atlas-backed texture today, but this makes that
+	// safe by construction rather than by every future caller having to
+	// remember to check.
+	float u0=0.0f, v1=1.0f, u1=1.0f, v0=0.0f;
+	if (texture)
+	{
+		texture->composeUV(0.0f, 1.0f, &u0, &v1);
+		texture->composeUV(1.0f, 0.0f, &u1, &v0);
+	}
+	drawTexturedQuad(renderer, texture ? texture->sdlTexture : 0, cx, cy, hw, hh, r, g, b, a, blend, u0, v1, u1, v0);
 }
 
 // Overload for CountedPtr<Texture>-typed members (Refcounted.h), which has
@@ -93,8 +123,7 @@ inline void drawTexturedQuad(SDL_Renderer *renderer, const CountedPtr<Texture> &
 	float cx, float cy, float hw, float hh,
 	float r, float g, float b, float a, SDL_BlendMode blend)
 {
-	const Texture *t = texture.content();
-	drawTexturedQuad(renderer, t ? t->sdlTexture : 0, cx, cy, hw, hh, r, g, b, a, blend);
+	drawTexturedQuad(renderer, texture.content(), cx, cy, hw, hh, r, g, b, a, blend);
 }
 
 #endif
